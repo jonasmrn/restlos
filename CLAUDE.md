@@ -2,7 +2,7 @@
 
 Statische PWA ohne Build-Schritt und ohne Abhängigkeiten (auf dem Mac gibt es kein node/npm). Reines HTML/CSS/JS, Daten als JS-Dateien mit `window.*`-Globals, damit alles auch per `file://` und offline läuft. Zustand liegt in `localStorage` (`restlos-v1`).
 
-- `data/zutaten.js` – Zutaten mit Packungsgröße, Richtpreis (Discounter), Haltbarkeit nach Öffnen, einfrierbar, Basis-Vorrat
+- `data/zutaten.js` – Zutaten mit Packungsgröße, Richtpreis (Discounter), Haltbarkeit nach Öffnen, einfrierbar, Basis-Vorrat, Nährwerte je 100 g (`nw`) und Gramm pro Stück (`g`). Neue Zutaten brauchen beides, sonst fehlen sie in der Nährwertberechnung
 - `data/rezepte.js` – Rezepte (keine Fischgerichte – der Nutzer mag keinen Fisch). `opt` = weglassbare Zutat, `aufw: false` = nicht als Rest geeignet
 - `data/maerkte.js` – Märkte in 51688 Wipperfürth + Preisfaktoren je Abteilung
 - `data/angebote.js` – Wochenangebote (wird wöchentlich gepflegt, s. u.)

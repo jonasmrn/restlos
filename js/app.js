@@ -246,8 +246,9 @@
       const iso = L.plusTage(p.start, d);
       const keys = L.SLOTS.map((s) => `${d}-${s}`).filter((k) => p.mahlzeiten[k]);
       if (!keys.length) continue;
+      const tagKcal = keys.reduce((a, k) => a + mahlzeitKcal(k), 0);
       html += `<section class="day ${iso === heute() ? "today" : ""}">
-        <div class="day-h"><span>${L.datumKurz(iso)}</span>${iso === heute() ? `<span class="muted">heute</span>` : ""}</div>
+        <div class="day-h"><span>${L.datumKurz(iso)}${iso === heute() ? ` <span class="muted">· heute</span>` : ""}</span>${tagKcal ? `<span class="muted">≈ ${(Math.round(tagKcal / 10) * 10).toLocaleString("de-DE")} kcal</span>` : ""}</div>
         ${keys.map((k) => mahlzeitZeile(k)).join("")}
       </section>`;
     }
@@ -264,6 +265,19 @@
       <div class="btns"><button class="btn" data-a="wocheAbschliessen">✅ Woche abschließen</button><button class="btn danger" data-a="planLoeschen">Plan löschen</button></div>
     </div>`;
     return html;
+  }
+
+  // Kalorien pro Portion; im Plan zählen abgewählte Zutaten nicht mit
+  const kcalVon = (r, portionen, weg) => L.naehrwerte(r, portionen || r.s, weg || [], S.einstellungen.ausgeschlossen).kcal;
+  const kcalTag = (kcal) => ` <span class="kcal">(${Math.round(kcal / 10) * 10} kcal)</span>`;
+  function mahlzeitKcal(key) {
+    const m = S.plan.mahlzeiten[key];
+    if (m.art === "koch" || m.art === "rest") {
+      const k = S.plan.kochen[m.id];
+      return k && REZ[k.rid] ? kcalVon(REZ[k.rid], k.portionen, k.weg) : 0;
+    }
+    if (m.art === "tk" && REZ[m.rid]) return kcalVon(REZ[m.rid]);
+    return 0;
   }
 
   function zusammenfassungEinstellungen() {
@@ -304,7 +318,7 @@
       em = "🚶"; t = "Frei / auswärts"; cls = "rest"; sub = "";
     }
     return `<button class="meal ${cls}" data-a="slot" data-key="${key}">${slot}<span class="em">${em}</span>
-      <span class="grow"><div class="t">${esc(t)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</span><span class="chev">›</span></button>`;
+      <span class="grow"><div class="t">${esc(t)}${mahlzeitKcal(key) ? kcalTag(mahlzeitKcal(key)) : ""}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</span><span class="chev">›</span></button>`;
   }
 
   function resteKarte(p, reste) {
@@ -373,7 +387,7 @@
     const mahl = r.m.map((m) => L.SLOT_NAME[m]).join(" · ");
     return `<button class="rcard ${konflikt.length ? "dim" : ""}" data-a="rezept" data-id="${r.id}">
       <span class="em">${r.e}</span>
-      <span class="grow"><div class="t">${esc(r.n)}</div>
+      <span class="grow"><div class="t">${esc(r.n)}${kcalTag(kcalVon(r))}</div>
         <div class="meta">${r.t} Min. · ${mahl}${r.geraet ? ` · ${r.geraet === "ofen" ? "Ofen" : "Airfryer"}` : ""}</div>
         <div class="chips">
           ${S.wuensche.includes(r.id) ? `<span class="badge accent">⭐ Wunsch</span>` : ""}
@@ -625,7 +639,7 @@
       const r = REZ[k.rid];
       const info = L.portionenInfo(p, m.id);
       const restSlots = referenzen(m.id).filter(([kk, mm]) => mm.art === "rest").map(([kk]) => slotLabel(kk));
-      html += `<div class="card"><div class="row"><span style="font-size:38px">${r.e}</span><div class="grow"><b style="font-size:17px">${esc(r.n)}</b>
+      html += `<div class="card"><div class="row"><span style="font-size:38px">${r.e}</span><div class="grow"><b style="font-size:17px">${esc(r.n)}</b>${kcalTag(kcalVon(r, k.portionen, k.weg))}
           <div class="small muted">${r.t} Min.${restSlots.length ? ` · Rest: ${esc(restSlots.join(", "))}` : ""}</div></div></div>
         ${s !== "fruehstueck" ? `<div class="row between" style="margin-top:12px"><span class="small">${info.uebrig > 0 ? `<span class="badge accent">${info.uebrig} Portion übrig → einfrieren</span>` : "Portionen"}</span>
           <span class="stepper"><button data-a="portion" data-id="${m.id}" data-delta="-1" aria-label="weniger">−</button><span>${plural(k.portionen, "Portion", "Portionen")}</span><button data-a="portion" data-id="${m.id}" data-delta="1" aria-label="mehr">+</button></span></div>` : ""}
@@ -680,7 +694,7 @@
     return liste.map((x) => {
       const genutzt = x.genutzt.filter((g) => !Z[g.id].vorrat).sort((a, b) => (L.verderblich(b.id) ? 1 : 0) - (L.verderblich(a.id) ? 1 : 0)).slice(0, 3);
       return `<button class="sug ${x.r.id === aktuell ? "cur" : ""}" data-a="setRezept" data-key="${key}" data-id="${x.r.id}">
-        <span class="em">${x.r.e}</span><span class="grow"><div class="t">${esc(x.r.n)} ${S.wuensche.includes(x.r.id) ? "⭐" : ""}</div>
+        <span class="em">${x.r.e}</span><span class="grow"><div class="t">${esc(x.r.n)}${kcalTag(kcalVon(x.r))} ${S.wuensche.includes(x.r.id) ? "⭐" : ""}</div>
         ${genutzt.length ? `<div class="why">♻️ nutzt Rest: ${genutzt.map((g) => `${esc(Z[g.id].n)} ${L.menge(g.id, g.menge)}`).join(", ")}</div>` : ""}
         <div class="cost">${x.kosten > 0.01 ? `neu einkaufen ca. ${L.euro(x.kosten)}` : "alles schon da"} · ${x.r.t} Min.${x.imPlan ? " · schon im Plan" : ""}${x.gesperrt ? " · 🚫 ausgeblendet" : ""}${S.bewertungen[x.r.id] ? ` · ${"★".repeat(S.bewertungen[x.r.id])}` : ""}${x.konflikt.length ? ` · ⚠️ enthält ${esc(x.konflikt.map((id) => Z[id].n).join(", "))}` : ""}</div></span>
         ${x.r.id === aktuell ? `<span class="badge green">aktuell</span>` : ""}</button>`;
@@ -719,12 +733,13 @@
       </ul>
       <p class="tiny muted" style="margin:8px 0 0">${k ? "Schalter aus = Zutat weglassen, sie verschwindet von der Einkaufsliste." : "Zutaten weglassen kannst du, sobald das Gericht im Plan ist. Dauerhafte Abneigungen stellst du unter Einstellungen ein."}</p>
     </div>
+    ${naehrwertKarte(L.naehrwerte(r, portionen, k?.weg || [], aus), !!k?.weg?.length || zs.some((z) => z.grund === "mag ich nicht"))}
     <div class="card"><h2>Zubereitung</h2><ol class="steps">${r.st.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
       ${r.tipp ? `<div class="note green small">💡 ${esc(r.tipp)}</div>` : ""}</div>`;
 
     if (gut.length) {
       html += `<div class="card"><h2>♻️ Passt gut dazu</h2><p class="small muted" style="margin-top:0">Diese Gerichte brauchen auf, was von den Packungen übrig bleibt.</p>
-        ${gut.map((g) => `<button class="sug" data-a="rezept" data-id="${g.r.id}"><span class="em">${g.r.e}</span><span class="grow"><div class="t">${esc(g.r.n)}</div>
+        ${gut.map((g) => `<button class="sug" data-a="rezept" data-id="${g.r.id}"><span class="em">${g.r.e}</span><span class="grow"><div class="t">${esc(g.r.n)}${kcalTag(kcalVon(g.r))}</div>
           <div class="why">teilt: ${g.geteilt.map((id) => esc(Z[id].n)).join(", ")}</div></span></button>`).join("")}</div>`;
     }
     const w = S.wuensche.includes(r.id);
@@ -739,6 +754,34 @@
       ${S.plan ? `<button class="btn" data-a="einplanen" data-id="${r.id}">🗓️ In den Plan</button>` : ""}
     </div>`;
     return html;
+  }
+
+  function naehrwertKarte(n, angepasst) {
+    const g = (x) => `${x.toLocaleString("de-DE", { maximumFractionDigits: x < 10 ? 1 : 0 })} g`;
+    // Energieanteile der Makronährstoffe (Eiweiß/KH 4 kcal/g, Fett 9 kcal/g)
+    const e = n.eiweiss * 4, kh = n.kh * 4, f = n.fett * 9, sum = e + kh + f || 1;
+    const pct = (x) => Math.round((x / sum) * 100);
+    return `<div class="card"><h2>Nährwerte pro Portion</h2>
+      <div class="nw-grid">
+        <div class="nw-tile"><b>${Math.round(n.kcal / 10) * 10}</b><span>kcal</span></div>
+        <div class="nw-tile"><b>${Math.round(n.eiweiss)} g</b><span>Eiweiß</span></div>
+        <div class="nw-tile"><b>${Math.round(n.kh)} g</b><span>Kohlenhydrate</span></div>
+        <div class="nw-tile"><b>${Math.round(n.fett)} g</b><span>Fett</span></div>
+      </div>
+      <div class="nw-bar" aria-hidden="true"><i style="width:${pct(e)}%;background:var(--primary)"></i><i style="width:${pct(kh)}%;background:var(--accent)"></i><i style="width:${pct(f)}%;background:#d4a72c"></i></div>
+      <div class="tiny muted row wrap" style="gap:12px;margin:6px 0 4px"><span><span class="mdot" style="background:var(--primary)"></span>Eiweiß ${pct(e)} %</span><span><span class="mdot" style="background:var(--accent)"></span>Kohlenhydrate ${pct(kh)} %</span><span><span class="mdot" style="background:#d4a72c"></span>Fett ${pct(f)} %</span></div>
+      <ul class="list" style="margin-top:6px">
+        <li><span class="grow">Brennwert</span><span class="m">${Math.round(n.kcal)} kcal / ${Math.round(n.kcal * 4.184)} kJ</span></li>
+        <li><span class="grow">Eiweiß</span><span class="m">${g(n.eiweiss)}</span></li>
+        <li><span class="grow">Kohlenhydrate</span><span class="m">${g(n.kh)}</span></li>
+        <li><span class="grow muted">davon Zucker</span><span class="m">${g(n.zucker)}</span></li>
+        <li><span class="grow">Fett</span><span class="m">${g(n.fett)}</span></li>
+        <li><span class="grow muted">davon gesättigte Fettsäuren</span><span class="m">${g(n.ges)}</span></li>
+        <li><span class="grow">Ballaststoffe</span><span class="m">${g(n.bal)}</span></li>
+        <li><span class="grow">Salz</span><span class="m">${g(n.salz)}</span></li>
+      </ul>
+      <p class="tiny muted" style="margin:8px 0 0">Richtwerte, berechnet aus Durchschnittswerten der Zutaten${angepasst ? ". Weggelassene Zutaten sind schon herausgerechnet" : ""}.</p>
+    </div>`;
   }
 
   function sheetEinplanen() {

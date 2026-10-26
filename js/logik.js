@@ -63,6 +63,19 @@ window.L = (() => {
       return { id, menge: q * f, opt: opt === "opt", aktiv: !grund, grund };
     });
   }
+  // Nährwerte pro Portion – nur aus Zutaten, die tatsächlich verwendet werden
+  const NW_FELDER = ["kcal", "eiweiss", "kh", "zucker", "fett", "ges", "bal", "salz"];
+  function naehrwerte(r, portionen = r.s, weg = [], ausgeschlossen = []) {
+    const summe = NW_FELDER.map(() => 0);
+    for (const z of zutatenFuer(r, portionen, weg, ausgeschlossen)) {
+      const zi = Z[z.id];
+      if (!z.aktiv || !zi.nw) continue;
+      const gramm = zi.u === "g" || zi.u === "ml" ? z.menge : z.menge * (zi.g || 0);
+      zi.nw.forEach((v, i) => { summe[i] += (v * gramm) / 100; });
+    }
+    return Object.fromEntries(NW_FELDER.map((f, i) => [f, summe[i] / portionen]));
+  }
+
   // Pflicht-Zutaten, die auf der Abneigungsliste stehen
   const kernKonflikte = (r, ausgeschlossen) => r.z.filter((z) => z[2] !== "opt" && ausgeschlossen.includes(z[0])).map((z) => z[0]);
 
@@ -550,7 +563,7 @@ window.L = (() => {
     Z, REZ, SLOTS, SLOT_NAME, SLOT_ICON, TAGE,
     isoDatum, ausIso, plusTage, wochentag, datumKurz,
     zahl, menge, euro,
-    zutatenFuer, kernKonflikte, istVorrat, verderblich,
+    zutatenFuer, naehrwerte, kernKonflikte, istVorrat, verderblich,
     preis, bestpreis, angebotFuer, angeboteFuerZutat,
     slotsListe, slotOrder, erstelleGeruest, portionenInfo, kochListe, uid,
     bedarf, einkaufsliste, reste, marktVergleich, planKosten,
