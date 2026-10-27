@@ -12,8 +12,12 @@ window.KATEGORIEN = [
   { id: "fleisch", name: "Fleisch & Wurst", icon: "🥩" },
   { id: "tk", name: "Tiefkühl", icon: "🧊" },
   { id: "trocken", name: "Nudeln, Reis & Co.", icon: "🍝" },
+  { id: "fruehstueck", name: "Frühstück & Aufstriche", icon: "🍯" },
   { id: "konserven", name: "Konserven & Saucen", icon: "🥫" },
+  { id: "suesses", name: "Süßes & Snacks", icon: "🍫" },
+  { id: "getraenke", name: "Getränke", icon: "🥤" },
   { id: "vorrat", name: "Gewürze & Basics", icon: "🧂" },
+  { id: "drogerie", name: "Drogerie & Haushalt", icon: "🧻" },
 ];
 
 window.ZUTATEN = {

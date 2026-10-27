@@ -1,8 +1,8 @@
 // Netzwerk zuerst (damit neue Angebote sofort ankommen), offline aus dem Cache.
-const CACHE = "restlos-v1";
+const CACHE = "restlos-v2";
 const DATEIEN = [
   "./", "index.html", "css/style.css", "js/logik.js", "js/app.js",
-  "data/zutaten.js", "data/rezepte.js", "data/maerkte.js", "data/angebote.js",
+  "data/zutaten.js", "data/sortiment.js", "data/rezepte.js", "data/maerkte.js", "data/angebote.js",
   "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
 ];
 self.addEventListener("install", (e) => {

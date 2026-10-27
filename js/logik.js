@@ -222,6 +222,43 @@ window.L = (() => {
     return { kaufen, ausVorrat, habeIch };
   }
 
+  // Gemeinsame Einkaufsliste: Zutaten aus dem Plan plus selbst hinzugefügte Artikel
+  function gesamtListe(st) {
+    const basis = st.plan ? einkaufsliste(st.plan, st) : { kaufen: [], ausVorrat: [], habeIch: [] };
+    const map = new Map(basis.kaufen.map((e) => [e.id, { ...e, ausPlan: e.packungen, manuell: 0 }]));
+    for (const [id, n] of Object.entries(st.liste || {})) {
+      if (!Z[id] || !(n > 0)) continue;
+      const e = map.get(id);
+      if (e) { e.manuell = n; e.packungen += n; }
+      else map.set(id, { id, bedarf: 0, vorhanden: 0, packungen: n, rest: 0, rezepte: [], ausPlan: 0, manuell: n });
+    }
+    const kaufen = [...map.values()].sort(sortiereNachAbteilung);
+    return { ...basis, kaufen, frei: (st.freitext || []).filter((f) => f.anzahl > 0) };
+  }
+  function sortiereNachAbteilung(a, b) {
+    const ordnung = Object.fromEntries(window.KATEGORIEN.map((k, i) => [k.id, i]));
+    return ordnung[Z[a.id].cat] - ordnung[Z[b.id].cat] || Z[a.id].n.localeCompare(Z[b.id].n);
+  }
+
+  // Suche im Sortiment (Name und Suchbegriffe, Umlaute egal)
+  const normal = (t) => String(t || "").toLowerCase().replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss");
+  function suche(q) {
+    const n = normal(q).trim();
+    if (!n) return [];
+    const treffer = [];
+    for (const [id, z] of Object.entries(Z)) {
+      const name = normal(z.n);
+      const worte = name.split(/[^a-z0-9]+/);
+      let rang = -1;
+      if (name.startsWith(n)) rang = 0;
+      else if (worte.some((w) => w.startsWith(n))) rang = 1;
+      else if (name.includes(n)) rang = 2;
+      else if (normal(z.s).split(" ").some((w) => w && w.startsWith(n))) rang = 3;
+      if (rang >= 0) treffer.push({ id, rang });
+    }
+    return treffer.sort((a, b) => a.rang - b.rang || Z[a.id].n.length - Z[b.id].n.length).map((t) => t.id);
+  }
+
   // Was nach dem Plan übrig bleibt (aus gekauften Packungen und Vorrat)
   function reste(plan, st) {
     const { kaufen } = einkaufsliste(plan, st);
@@ -240,8 +277,8 @@ window.L = (() => {
   }
 
   // ---------- Marktvergleich ----------
-  function marktVergleich(plan, st) {
-    const { kaufen } = einkaufsliste(plan, st);
+  // Vergleicht die Märkte für eine Liste von Einträgen {id, packungen}
+  function marktVergleich(kaufen, st) {
     const ms = st.einstellungen.maerkte;
     const einzel = ms
       .map((m) => {
@@ -554,7 +591,7 @@ window.L = (() => {
   }
 
   function planKosten(plan, st) {
-    const v = marktVergleich(plan, st);
+    const v = marktVergleich(einkaufsliste(plan, st).kaufen, st);
     if (!v.einzel.length) return null;
     return v.lohntKombi ? v.kombi.summe : v.einzel[0].summe;
   }
@@ -566,7 +603,7 @@ window.L = (() => {
     zutatenFuer, naehrwerte, kernKonflikte, istVorrat, verderblich,
     preis, bestpreis, angebotFuer, angeboteFuerZutat,
     slotsListe, slotOrder, erstelleGeruest, portionenInfo, kochListe, uid,
-    bedarf, einkaufsliste, reste, marktVergleich, planKosten,
+    bedarf, einkaufsliste, gesamtListe, suche, normal, reste, marktVergleich, planKosten,
     neuerPlan, leererPlan, fuelle, vorschlaege, passtGutZu, kandidaten, simuliere, ziel, proteinGruppe,
   };
 })();

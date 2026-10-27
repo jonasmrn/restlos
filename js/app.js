@@ -36,6 +36,9 @@
       habeIch: {},
       abgehakt: {},
       zuletzt: [],
+      liste: {},
+      freitext: [],
+      verlauf: [],
     };
   }
   function laden() {
@@ -59,7 +62,7 @@
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignorieren */ }
   }
 
-  const ui = { tab: "plan", filter: "alle", zutatFilter: null, suche: "", sheet: null, sheetSuche: "", einkaufAnsicht: "abteilung", portionen: null };
+  const ui = { tab: "plan", filter: "alle", zutatFilter: null, suche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null };
   try { ui.tab = sessionStorage.getItem("restlos-tab") || "plan"; } catch (e) { /* egal */ }
 
   // ---------- Hilfen ----------
@@ -144,6 +147,7 @@
   }
   function neuPlanen() {
     S.plan = L.neuerPlan(S);
+    aufraeumen();
     S.abgehakt = {};
   }
 
@@ -169,6 +173,7 @@
       }
     }
     S.zuletzt = [...new Set(L.kochListe(p).map((k) => k.rid).filter(Boolean))];
+    aufraeumen();
     S.plan = null;
     S.abgehakt = {};
     S.habeIch = {};
@@ -188,7 +193,7 @@
     const t = {
       plan: ["Wochenplan", S.plan ? `${L.datumKurz(S.plan.start)} – ${L.datumKurz(L.plusTage(S.plan.start, S.plan.tage - 1))}` : "Restlos – weniger wegwerfen"],
       rezepte: ["Rezepte", `${window.REZEPTE.length} Gerichte`],
-      einkauf: ["Einkauf", S.plan ? "für deinen Wochenplan" : ""],
+      einkauf: ["Einkauf", S.plan ? "Wochenplan + eigene Artikel" : "deine Liste"],
       angebote: ["Angebote", window.ANGEBOTE?.von ? `${fmtDatum(window.ANGEBOTE.von)} – ${fmtDatum(window.ANGEBOTE.bis)}` : "Wipperfürth"],
       mehr: ["Einstellungen", ""],
     }[ui.tab];
@@ -197,17 +202,21 @@
   const fmtDatum = (iso) => (iso ? L.datumKurz(iso) : "");
 
   function navigation() {
-    const offen = S.plan ? L.einkaufsliste(S.plan, S).kaufen.filter((e) => !S.abgehakt[e.id]).length : 0;
+    const gl = L.gesamtListe(S);
+    const offen = gl.kaufen.filter((e) => !S.abgehakt[e.id]).length + gl.frei.filter((f) => !S.abgehakt[f.id]).length;
     return `<nav class="tabs">${TABS.map(
       (t) => `<button class="${ui.tab === t.id ? "on" : ""}" data-a="tab" data-id="${t.id}" aria-label="${t.n}">
         <span class="i">${t.i}</span>${t.n}${t.id === "einkauf" && offen ? `<span class="dot">${offen}</span>` : ""}</button>`
     ).join("")}</nav>`;
   }
 
-  function render() {
+  function renderMain() {
     const app = document.getElementById("app");
     const views = { plan: viewPlan, rezepte: viewRezepte, einkauf: viewEinkauf, angebote: viewAngebote, mehr: viewMehr };
     app.innerHTML = kopf() + `<main>${views[ui.tab]()}</main>` + navigation();
+  }
+  function render() {
+    renderMain();
     renderSheet();
   }
 
@@ -416,69 +425,49 @@
   }
 
   // ---------- Ansicht: Einkauf ----------
-  function viewEinkauf() {
-    if (!S.plan) {
-      return `<div class="card hero"><div class="big">🛒</div><h2>Noch keine Einkaufsliste</h2><p>Erstelle zuerst einen Wochenplan. Die Liste entsteht dann automatisch, gerundet auf echte Packungsgrößen.</p>
-        <button class="btn primary" data-a="planNeu">✨ Plan vorschlagen</button></div>`;
-    }
-    const liste = L.einkaufsliste(S.plan, S);
-    const v = L.marktVergleich(S.plan, S);
-    const e = S.einstellungen;
-    let html = "";
+  // Welcher Markt für einen Artikel gilt (Einzelmarkt oder Kombination)
+  const marktWahl = (v) => (id) => (v.lohntKombi ? v.kombi.zuordnung[id] : v.einzel[0]?.markt);
 
-    if (!liste.kaufen.length) {
-      html += `<div class="card hero"><div class="big">🎉</div><h2>Alles da!</h2><p>Für deinen Plan musst du nichts einkaufen.</p></div>`;
+  function viewEinkauf() {
+    const liste = L.gesamtListe(S);
+    const v = L.marktVergleich(liste.kaufen, S);
+    const marktVon = marktWahl(v);
+    const offen = liste.kaufen.filter((x) => !S.abgehakt[x.id]);
+    const freiOffen = liste.frei.filter((f) => !S.abgehakt[f.id]);
+    let html = `<button class="addbar" data-a="hinzufuegen"><span>🔍</span><span class="grow">Ich brauche …</span><span class="plus">+</span></button>`;
+
+    if (!liste.kaufen.length && !liste.frei.length) {
+      html += `<div class="card hero"><div class="big">🛒</div><h2>Deine Liste ist leer</h2>
+        <p>Tippe oben auf „Ich brauche …“ und wähle Artikel aus. Mit einem Wochenplan kommen die Zutaten automatisch dazu.</p>
+        ${S.plan ? "" : `<button class="btn primary" data-a="planNeu">✨ Plan vorschlagen</button>`}</div>`;
     } else {
-      const best = v.einzel[0];
-      const max = Math.max(...v.einzel.map((x) => x.summe));
-      const gleich = v.einzel.filter((x) => x.summe - best.summe < 0.3 && x.markt !== best.markt).map((x) => marktName(x.markt));
-      html += `<div class="card"><div class="reco">`;
-      if (v.lohntKombi) {
-        const zweit = v.kombi.maerkte[1];
-        const dort = liste.kaufen.filter((x) => v.kombi.zuordnung[x.id] === zweit);
-        html += `<div class="small muted">Empfehlung</div>
-          <div class="big">${marktName(v.kombi.maerkte[0])} + ${marktName(zweit)}</div>
-          <div>ca. <b>${L.euro(v.kombi.summe)}</b>, spart ${L.euro(v.kombi.ersparnis)} gegenüber nur ${marktName(best.markt)}</div>
-          <div class="small" style="margin-top:6px">Bei ${marktName(zweit)}: ${dort.map((x) => esc(Z[x.id].n)).join(", ")}</div>`;
-      } else {
-        html += `<div class="small muted">Empfehlung</div>
-          <div class="big">${marktName(best.markt)}</div>
-          <div>ca. <b>${L.euro(best.summe)}</b> für ${plural(liste.kaufen.length, "Artikel", "Artikel")}${gleich.length ? ` · ${gleich.join(", ")} etwa gleich günstig` : ""}</div>`;
-        if (best.angebote.length) html += `<div class="small" style="margin-top:6px">🏷️ Angebote: ${best.angebote.map((a) => esc(Z[a.id].n)).join(", ")}</div>`;
-      }
-      html += `</div>`;
-      if (e.budget) {
-        const summe = v.lohntKombi ? v.kombi.summe : best.summe;
-        const ok = summe <= e.budget;
-        html += `<div class="note ${ok ? "green" : ""} small" style="margin-top:10px">${ok ? "✓" : "⚠️"} Budget ${L.euro(e.budget)}: geschätzt ${L.euro(summe)}${ok ? `, ${L.euro(e.budget - summe)} Luft` : `, ${L.euro(summe - e.budget)} drüber. Tipp: „Neu vorschlagen“ achtet bei gesetztem Budget stärker auf den Preis.`}</div>`;
-      }
-      html += `<h3>Preisvergleich</h3>
-        ${v.einzel.map((x, i) => `<div class="mbar ${i === 0 ? "best" : ""}"><span class="name"><span class="mdot" style="background:${marktFarbe(x.markt)}"></span>${marktName(x.markt)}</span>
-          <span class="bar"><i style="width:${Math.max(8, (x.summe / max) * 100)}%"></i></span><span class="val">${L.euro(x.summe)}</span></div>`).join("")}
-        <p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt${window.ANGEBOTE?.stand ? ` · Angebote Stand ${fmtDatum(window.ANGEBOTE.stand)}` : ", noch keine Wochenangebote eingetragen."}</p>
-      </div>`;
+      if (liste.kaufen.length) html += empfehlungKarte(liste, v);
 
       const ansicht = v.lohntKombi ? ui.einkaufAnsicht : "abteilung";
-      if (v.lohntKombi) {
-        html += `<div class="chips" style="margin:6px 0"><button class="chip ${ansicht === "abteilung" ? "on" : ""}" data-a="einkaufAnsicht" data-id="abteilung">Nach Abteilung</button><button class="chip ${ansicht === "markt" ? "on" : ""}" data-a="einkaufAnsicht" data-id="markt">Nach Markt</button></div>`;
-      }
-      const marktVon = (id) => (v.lohntKombi ? v.kombi.zuordnung[id] : best.markt);
+      html += `<div class="row between" style="margin:16px 0 0"><b>${offen.length + freiOffen.length} offen</b>
+        <span class="row">${v.lohntKombi ? `<button class="chip ${ansicht === "abteilung" ? "on" : ""}" data-a="einkaufAnsicht" data-id="abteilung">Abteilung</button><button class="chip ${ansicht === "markt" ? "on" : ""}" data-a="einkaufAnsicht" data-id="markt">Markt</button>` : ""}
+        <button class="btn sm" data-a="teilen">📤 Teilen</button></span></div>`;
+      if (!offen.length && !freiOffen.length) html += `<div class="note green small" style="margin-top:10px">🎉 Alles im Wagen!</div>`;
+
       const gruppen = [];
       if (ansicht === "markt") {
-        for (const m of v.kombi.maerkte) gruppen.push({ titel: `${marktName(m)}`, items: liste.kaufen.filter((x) => marktVon(x.id) === m) });
+        for (const m of v.kombi.maerkte) gruppen.push({ titel: marktName(m), items: offen.filter((x) => marktVon(x.id) === m) });
       } else {
-        for (const k of window.KATEGORIEN) {
-          const items = liste.kaufen.filter((x) => Z[x.id].cat === k.id);
-          if (items.length) gruppen.push({ titel: `${k.icon} ${k.name}`, items });
-        }
+        for (const k of window.KATEGORIEN) gruppen.push({ titel: `${k.icon} ${k.name}`, items: offen.filter((x) => Z[x.id].cat === k.id) });
       }
-      const erledigt = liste.kaufen.filter((x) => S.abgehakt[x.id]).length;
-      html += `<div class="card">
-        <div class="row between"><b>${erledigt}/${liste.kaufen.length} erledigt</b>
-          <span class="row"><button class="btn sm" data-a="teilen">📤 Teilen</button>${erledigt ? `<button class="btn sm ghost" data-a="abhakenReset">Zurücksetzen</button>` : ""}</span></div>
-        ${gruppen.map((g) => `<div class="cat-h">${g.titel}</div><ul class="list">${g.items.map((x) => einkaufZeile(x, marktVon(x.id), v.lohntKombi)).join("")}</ul>`).join("")}
-        <p class="tiny muted" style="margin:12px 0 0">Tippe auf ⋯, wenn du etwas schon zuhause hast. Es verschwindet dann von der Liste.</p>
-      </div>`;
+      for (const g of gruppen) {
+        if (g.items.length) html += `<div class="cat-h">${g.titel}</div><div class="tiles">${g.items.map((x) => kachel(x, marktVon(x.id))).join("")}</div>`;
+      }
+      if (freiOffen.length) html += `<div class="cat-h">✏️ Sonstiges</div><div class="tiles">${freiOffen.map((f) => freiKachel(f)).join("")}</div>`;
+
+      const gekauft = [...liste.kaufen.filter((x) => S.abgehakt[x.id]).map((x) => kachel(x, marktVon(x.id), true)), ...liste.frei.filter((f) => S.abgehakt[f.id]).map((f) => freiKachel(f, true))];
+      if (gekauft.length) {
+        html += `<div class="card flat" style="margin-top:18px"><details><summary>🛒 Im Wagen (${gekauft.length})</summary>
+          <div class="tiles" style="margin-top:10px">${gekauft.join("")}</div>
+          <div class="btns" style="margin-top:10px"><button class="btn sm" data-a="aufraeumen">🧹 Liste aufräumen</button><button class="btn sm ghost" data-a="abhakenReset">Alle zurücklegen</button></div>
+          <p class="tiny muted" style="margin:8px 0 0">Antippen legt etwas zurück auf die Liste. „Aufräumen“ entfernt gekaufte eigene Artikel, Zutaten aus dem Plan bleiben als gekauft markiert.</p></details></div>`;
+      }
+      html += `<p class="tiny muted" style="margin:12px 0 0">Kachel antippen = gekauft. Über ⋯ änderst du die Menge, siehst die Preise je Markt oder markierst „hab ich schon“. 🗓️ = aus dem Wochenplan, 🏷️ = im Angebot.</p>`;
     }
 
     if (liste.habeIch.length) {
@@ -492,24 +481,150 @@
         <p class="small muted">${liste.ausVorrat.map((x) => esc(Z[x.id].n)).join(", ")}</p>
         <p class="tiny muted">Etwas davon ist leer? Unter Einstellungen → Basis-Vorrat abwählen, dann kommt es auf die Liste.</p></details></div>`;
     }
+    html += `<button class="fab" data-a="hinzufuegen" aria-label="Artikel hinzufügen">+</button>`;
     return html;
   }
-  function einkaufZeile(x, markt, zeigeMarkt) {
+
+  function empfehlungKarte(liste, v) {
+    const e = S.einstellungen;
+    const best = v.einzel[0];
+    const max = Math.max(...v.einzel.map((x) => x.summe));
+    const gleich = v.einzel.filter((x) => x.summe - best.summe < 0.3 && x.markt !== best.markt).map((x) => marktName(x.markt));
+    const summe = v.lohntKombi ? v.kombi.summe : best.summe;
+    let html = `<div class="card"><div class="reco">`;
+    if (v.lohntKombi) {
+      const zweit = v.kombi.maerkte[1];
+      const dort = liste.kaufen.filter((x) => v.kombi.zuordnung[x.id] === zweit);
+      html += `<div class="small muted">Am günstigsten</div>
+        <div class="big">${marktName(v.kombi.maerkte[0])} + ${marktName(zweit)}</div>
+        <div>ca. <b>${L.euro(v.kombi.summe)}</b>, spart ${L.euro(v.kombi.ersparnis)} gegenüber nur ${marktName(best.markt)}</div>
+        <div class="small" style="margin-top:6px">Bei ${marktName(zweit)}: ${dort.map((x) => esc(Z[x.id].n)).join(", ")}</div>`;
+    } else {
+      html += `<div class="small muted">Am günstigsten</div>
+        <div class="big">${marktName(best.markt)}</div>
+        <div>ca. <b>${L.euro(best.summe)}</b> für ${plural(liste.kaufen.length, "Artikel", "Artikel")}${gleich.length ? ` · ${gleich.join(", ")} etwa gleich günstig` : ""}</div>`;
+      if (best.angebote.length) html += `<div class="small" style="margin-top:6px">🏷️ Angebote: ${best.angebote.map((a) => esc(Z[a.id].n)).join(", ")}</div>`;
+    }
+    html += `</div>`;
+    if (liste.frei.length) html += `<p class="tiny muted" style="margin:8px 0 0">${plural(liste.frei.length, "eigener Artikel", "eigene Artikel")} ohne hinterlegten Preis nicht eingerechnet.</p>`;
+    if (e.budget) {
+      const ok = summe <= e.budget;
+      html += `<div class="note ${ok ? "green" : ""} small" style="margin-top:10px">${ok ? "✓" : "⚠️"} Budget ${L.euro(e.budget)}: geschätzt ${L.euro(summe)}${ok ? `, ${L.euro(e.budget - summe)} Luft` : `, ${L.euro(summe - e.budget)} drüber`}</div>`;
+    }
+    html += `<details style="margin-top:12px"><summary class="small">Preisvergleich aller Märkte</summary>
+        ${v.einzel.map((x, i) => `<div class="mbar ${i === 0 ? "best" : ""}"><span class="name"><span class="mdot" style="background:${marktFarbe(x.markt)}"></span>${marktName(x.markt)}</span>
+          <span class="bar"><i style="width:${Math.max(8, (x.summe / max) * 100)}%"></i></span><span class="val">${L.euro(x.summe)}</span></div>`).join("")}
+        <p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt${window.ANGEBOTE?.stand ? ` · Angebote Stand ${fmtDatum(window.ANGEBOTE.stand)}` : ", noch keine Wochenangebote eingetragen."}</p>
+      </details></div>`;
+    return html;
+  }
+
+  function kachel(x, markt, gekauft = false) {
     const z = Z[x.id];
     const p = L.preis(x.id, markt);
-    const teile = [`für ${rezeptNamen(x.rezepte)}`];
-    if (x.vorhanden > 0.01) teile.push(`${L.menge(x.id, x.vorhanden)} schon da`);
-    if (x.rest > 0.01) teile.push(`Rest ${L.menge(x.id, x.rest)}`);
-    const done = !!S.abgehakt[x.id];
-    return `<li class="${done ? "done" : ""}">
-      <button class="check ${done ? "on" : ""}" data-a="abhaken" data-id="${x.id}" aria-label="${esc(z.n)} abhaken">✓</button>
-      <span class="grow" data-a="abhaken" data-id="${x.id}"><span class="n">${x.packungen}× ${esc(z.n)}</span>
-        <div class="tiny muted">${esc(z.pl)} · ${esc(teile.join(" · "))}</div>
-        ${p.angebot ? `<span class="badge offer">🏷️ ${marktName(markt)}: ${L.euro(p.preis)} statt ${L.euro(p.normal)}</span>` : ""}
-        ${zeigeMarkt && !p.angebot ? `<span class="badge">${marktName(markt)}</span>` : ""}</span>
-      <span class="m">${L.euro(p.preis * x.packungen)}</span>
-      <button class="iconbtn" style="width:34px;height:34px;font-size:16px" data-a="habeIch" data-id="${x.id}" aria-label="Habe ich schon">⋯</button>
-    </li>`;
+    return `<div class="tile ${x.ausPlan > 0 ? "plan" : ""} ${gekauft ? "done" : ""}">
+      <button class="tile-main" data-a="abhaken" data-id="${x.id}" aria-label="${esc(z.n)} ${gekauft ? "zurück auf die Liste" : "gekauft"}">
+        <span class="tile-e">${z.e || "🛒"}</span><span class="tile-n">${esc(z.n)}</span>
+        <span class="tile-m">${x.packungen > 1 ? `${x.packungen}× · ` : ""}${L.euro(p.preis * x.packungen)}</span>
+      </button>
+      <span class="tile-badges">${x.ausPlan > 0 ? "🗓️" : ""}${p.angebot ? "🏷️" : ""}</span>
+      <button class="tile-more" data-a="artikel" data-id="${x.id}" aria-label="Details zu ${esc(z.n)}">⋯</button>
+    </div>`;
+  }
+  function freiKachel(f, gekauft = false) {
+    return `<div class="tile frei ${gekauft ? "done" : ""}">
+      <button class="tile-main" data-a="abhaken" data-id="${f.id}" aria-label="${esc(f.n)} ${gekauft ? "zurück auf die Liste" : "gekauft"}">
+        <span class="tile-e">✏️</span><span class="tile-n">${esc(f.n)}</span><span class="tile-m">${f.anzahl > 1 ? `${f.anzahl}×` : "&nbsp;"}</span>
+      </button>
+      <button class="tile-more" data-a="artikel" data-id="${f.id}" aria-label="Details zu ${esc(f.n)}">⋯</button>
+    </div>`;
+  }
+
+  // ---------- Sheets: Hinzufügen & Artikel ----------
+  function sheetHinzufuegen() {
+    return `<div class="sheet-head"><span class="grip"></span>
+        <input class="search" id="addsuche" type="search" enterkeyhint="done" autocomplete="off" placeholder="Ich brauche …" value="${esc(ui.addSuche)}" data-input="addSuche" aria-label="Artikel suchen" style="margin-top:14px">
+        <button class="iconbtn" data-a="sheetZu" aria-label="Fertig" style="margin-top:14px">✓</button></div>
+      <div id="addgrid">${addGridHtml()}</div>`;
+  }
+  function addKachel(id, planIds) {
+    const z = Z[id];
+    const n = S.liste[id] || 0;
+    const ang = L.angeboteFuerZutat(id, S).length > 0;
+    return `<div class="tile add ${n ? "sel" : ""}">
+      <button class="tile-main" data-a="plus" data-id="${id}" aria-label="${esc(z.n)} hinzufügen"><span class="tile-e">${z.e || "🛒"}</span><span class="tile-n">${esc(z.n)}</span>
+        <span class="tile-m">${planIds.has(id) ? "im Plan · " : ""}${esc(z.pl)}</span></button>
+      ${ang ? `<span class="tile-badges">🏷️</span>` : ""}
+      ${n ? `<span class="tile-count">${n}</span><button class="tile-minus" data-a="minus" data-id="${id}" aria-label="eins weniger">−</button>` : ""}
+    </div>`;
+  }
+  function addGridHtml() {
+    const planIds = new Set(S.plan ? L.einkaufsliste(S.plan, S).kaufen.map((x) => x.id) : []);
+    const q = ui.addSuche.trim();
+    if (q) {
+      const ids = L.suche(q).slice(0, 60);
+      const exakt = ids.some((id) => L.normal(Z[id].n) === L.normal(q));
+      let html = `<div class="tiles" style="margin-top:6px">${ids.map((id) => addKachel(id, planIds)).join("")}
+        ${exakt ? "" : `<div class="tile add frei"><button class="tile-main" data-a="freiNeu"><span class="tile-e">✏️</span><span class="tile-n">„${esc(q)}“</span><span class="tile-m">als eigenen Artikel</span></button></div>`}</div>`;
+      if (!ids.length) html += `<p class="tiny muted">Nichts im Sortiment gefunden. Du kannst „${esc(q)}“ trotzdem als eigenen Artikel hinzufügen, allerdings ohne Preis.</p>`;
+      return html;
+    }
+    let html = "";
+    const verlauf = (S.verlauf || []).filter((id) => Z[id]).slice(0, 12);
+    if (verlauf.length) html += `<div class="cat-h">🕘 Zuletzt verwendet</div><div class="tiles">${verlauf.map((id) => addKachel(id, planIds)).join("")}</div>`;
+    for (const k of window.KATEGORIEN) {
+      const ids = Object.keys(Z).filter((id) => Z[id].cat === k.id).sort((a, b) => Z[a].n.localeCompare(Z[b].n));
+      if (ids.length) html += `<div class="cat-h">${k.icon} ${k.name}</div><div class="tiles">${ids.map((id) => addKachel(id, planIds)).join("")}</div>`;
+    }
+    return html;
+  }
+  // Beim Hinzufügen nur Liste und Kacheln neu zeichnen, damit Suchfeld und Tastatur offen bleiben
+  function nachHinzufuegen(msg) {
+    speichern();
+    renderMain();
+    const grid = document.getElementById("addgrid");
+    if (ui.sheet?.typ === "hinzufuegen" && grid) grid.innerHTML = addGridHtml();
+    else renderSheet();
+    if (msg) toast(msg);
+  }
+
+  function sheetArtikel() {
+    const id = ui.sheet.id;
+    const frei = (S.freitext || []).find((f) => f.id === id);
+    if (frei) {
+      return sheetKopf(`✏️ ${esc(frei.n)}`, "eigener Artikel, ohne Preis") + `<div class="card"><div class="row between"><b>Anzahl</b>
+          <span class="stepper"><button data-a="freiMenge" data-id="${id}" data-delta="-1">−</button><span>${frei.anzahl}</span><button data-a="freiMenge" data-id="${id}" data-delta="1">+</button></span></div></div>
+        <button class="btn danger block" data-a="freiWeg" data-id="${id}">Von der Liste nehmen</button>`;
+    }
+    const z = Z[id];
+    const x = L.gesamtListe(S).kaufen.find((e) => e.id === id) || { id, packungen: 0, ausPlan: 0, rezepte: [], rest: 0 };
+    const extra = S.liste[id] || 0;
+    const preise = S.einstellungen.maerkte.map((m) => ({ m, p: L.preis(id, m) })).sort((a, b) => a.p.preis - b.p.preis);
+    let html = sheetKopf(`${z.e || "🛒"} ${esc(z.n)}`, esc(z.pl));
+    if (x.ausPlan > 0) {
+      html += `<div class="card"><b>🗓️ Aus dem Wochenplan: ${x.ausPlan}×</b>
+        <div class="small muted">für ${esc(rezeptNamen(x.rezepte))}${x.rest > 0.01 ? ` · danach bleiben ${L.menge(id, x.rest)} übrig` : ""}</div>
+        <button class="btn sm" style="margin-top:10px" data-a="habeIch" data-id="${id}">🏠 Hab ich schon zuhause</button></div>`;
+    }
+    html += `<div class="card"><div class="row between"><span><b>${x.ausPlan > 0 ? "Zusätzlich" : "Anzahl"}</b><div class="tiny muted">${esc(z.pl)}</div></span>
+        <span class="stepper"><button data-a="menge" data-id="${id}" data-delta="-1">−</button><span>${extra}</span><button data-a="menge" data-id="${id}" data-delta="1">+</button></span></div></div>
+      <div class="card"><h2>Preis je Packung</h2><ul class="list">
+        ${preise.map(({ m, p }, i) => `<li><span class="grow"><span class="mdot" style="background:${marktFarbe(m)}"></span><span class="n">${marktName(m)}</span>${i === 0 ? ` <span class="badge green">günstigster</span>` : ""}
+          ${p.angebot ? `<div class="tiny" style="color:var(--offer)">🏷️ ${esc(p.angebot.text || "Angebot")}</div>` : ""}</span>
+          <span class="m">${p.angebot ? `<b style="color:var(--offer)">${L.euro(p.preis)}</b> <s class="tiny muted">${L.euro(p.normal)}</s>` : L.euro(p.preis)}</span></li>`).join("")}
+      </ul><p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt, Angebote laut Prospekt.</p></div>`;
+    if (extra > 0) html += `<button class="btn danger block" data-a="artikelWeg" data-id="${id}">Von der Liste nehmen</button>`;
+    return html;
+  }
+
+  // Gekaufte eigene Artikel entfernen (Plan-Zutaten bleiben abgehakt)
+  function aufraeumen() {
+    const planIds = new Set(S.plan ? L.einkaufsliste(S.plan, S).kaufen.map((x) => x.id) : []);
+    S.freitext = (S.freitext || []).filter((f) => !S.abgehakt[f.id]);
+    for (const id of Object.keys(S.abgehakt)) {
+      if (S.liste[id]) delete S.liste[id];
+      if (!planIds.has(id)) delete S.abgehakt[id];
+    }
   }
 
   // ---------- Ansicht: Angebote ----------
@@ -533,11 +648,13 @@
         ${items.map((a) => {
           const anz = window.REZEPTE.filter((r) => r.z.some((z) => z[0] === a.zutat)).length;
           const normal = L.preis(a.zutat, m.id).normal;
-          return `<li data-a="zutatRezepte" data-id="${a.zutat}" style="cursor:pointer"><span class="grow"><span class="n">${esc(Z[a.zutat].n)}</span>
+          const n = S.liste[a.zutat] || 0;
+          return `<li${anz ? ` data-a="zutatRezepte" data-id="${a.zutat}" style="cursor:pointer"` : ""}><span style="font-size:24px">${Z[a.zutat].e || "🏷️"}</span><span class="grow"><span class="n">${esc(Z[a.zutat].n)}</span>
             ${imPlan.has(a.zutat) ? ` <span class="badge green">im Plan</span>` : ""}
             <div class="tiny muted">${esc(a.text || "")}${a.bis ? ` · bis ${fmtDatum(a.bis)}` : ""}</div>
-            <div class="tiny" style="color:var(--primary)">${anz} passende${anz === 1 ? "s Rezept" : " Rezepte"} ›</div></span>
-            <span class="m"><b style="color:var(--offer)">${L.euro(a.preis)}</b><div class="tiny muted" style="text-decoration:line-through">${L.euro(normal)}</div></span></li>`;
+            ${anz ? `<div class="tiny" style="color:var(--primary)">${anz} passende${anz === 1 ? "s Rezept" : " Rezepte"} ›</div>` : ""}</span>
+            <span class="m"><b style="color:var(--offer)">${L.euro(a.preis)}</b><div class="tiny muted" style="text-decoration:line-through">${L.euro(normal)}</div></span>
+            <button class="btn sm ${n ? "primary" : ""}" data-a="plus" data-id="${a.zutat}" aria-label="${esc(Z[a.zutat].n)} auf die Liste">${n ? `${n}× ✓` : "+ Liste"}</button></li>`;
         }).join("")}
       </ul></div>`;
     }
@@ -547,7 +664,7 @@
   // ---------- Ansicht: Einstellungen ----------
   function viewMehr() {
     const e = S.einstellungen;
-    const zut = Object.entries(Z).filter(([, z]) => !z.vorrat).sort((a, b) => a[1].n.localeCompare(b[1].n));
+    const zut = Object.entries(Z).filter(([, z]) => !z.vorrat && !z.sortiment).sort((a, b) => a[1].n.localeCompare(b[1].n));
     const vorratZut = Object.entries(Z).filter(([, z]) => z.vorrat);
     const vorrat = Object.entries(S.vorrat).filter(([id, m]) => Z[id] && m > 0);
     return `
@@ -618,7 +735,7 @@
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
     const alt = root.querySelector(".sheet");
     const scroll = !neu && alt ? alt.scrollTop : 0;
-    const inhalt = { slot: sheetSlot, rezept: sheetRezept, einplanen: sheetEinplanen, bestaetigen: sheetBestaetigen }[ui.sheet.typ]();
+    const inhalt = { slot: sheetSlot, rezept: sheetRezept, einplanen: sheetEinplanen, bestaetigen: sheetBestaetigen, hinzufuegen: sheetHinzufuegen, artikel: sheetArtikel }[ui.sheet.typ]();
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
     root.innerHTML = `<div class="sheet-bg" data-a="sheetZu"></div><div class="sheet" role="dialog" aria-modal="true">${inhalt}</div>`;
     root.querySelector(".sheet").scrollTop = scroll;
@@ -822,9 +939,9 @@
       aendern(() => { if (vorhanden) S.zuletzt = [...new Set(L.kochListe(S.plan).map((k) => k.rid).filter(Boolean))]; neuPlanen(); }, vorhanden ? "Neuer Vorschlag erstellt" : "Plan erstellt ✨");
       if (ui.tab !== "plan") A.tab({ id: "plan" });
     },
-    planLeer: () => aendern(() => { S.plan = L.leererPlan(S); S.abgehakt = {}; }, "Leerer Plan – tippe auf eine Mahlzeit"),
+    planLeer: () => aendern(() => { S.plan = L.leererPlan(S); aufraeumen(); S.abgehakt = {}; }, "Leerer Plan – tippe auf eine Mahlzeit"),
     planFuellen: () => aendern(() => L.fuelle(S.plan, S, true), "Lücken gefüllt"),
-    planLoeschen: () => frage("Plan löschen?", "Der aktuelle Wochenplan und die Einkaufsliste werden verworfen.", "Löschen", () => { S.plan = null; S.abgehakt = {}; }, true),
+    planLoeschen: () => frage("Plan löschen?", "Der aktuelle Wochenplan und die Einkaufsliste werden verworfen.", "Löschen", () => { aufraeumen(); S.plan = null; S.abgehakt = {}; }, true),
     wocheAbschliessen: () => frage("Woche abschließen?", "Haltbare und einfrierbare Reste werden in deinen Vorrat übernommen, übrige Portionen in den Tiefkühler. Danach kannst du die nächste Woche planen.", "Abschließen", wocheAbschliessen),
     bestaetigt: () => { const fn = ui.sheet.fn; ui.sheet = null; aendern(fn); },
     slot: (ds) => oeffneSheet({ typ: "slot", key: ds.key }),
@@ -867,15 +984,59 @@
     zutatRezepte: (ds) => { ui.zutatFilter = ds.id; ui.filter = "alle"; ui.suche = ""; A.tab({ id: "rezepte" }); },
     abhaken: (ds) => aendern(() => { if (S.abgehakt[ds.id]) delete S.abgehakt[ds.id]; else S.abgehakt[ds.id] = true; }),
     abhakenReset: () => aendern(() => { S.abgehakt = {}; }),
-    habeIch: (ds) => aendern(() => { if (S.habeIch[ds.id]) delete S.habeIch[ds.id]; else S.habeIch[ds.id] = true; }, S.habeIch[ds.id] ? "Wieder auf der Liste" : `${Z[ds.id].n}: schon zuhause`),
+    habeIch: (ds) => {
+      if (ui.sheet?.typ === "artikel") ui.sheet = null;
+      aendern(() => { if (S.habeIch[ds.id]) delete S.habeIch[ds.id]; else S.habeIch[ds.id] = true; }, S.habeIch[ds.id] ? "Wieder auf der Liste" : `${Z[ds.id].n}: schon zuhause`);
+    },
+    hinzufuegen: () => {
+      ui.addSuche = "";
+      oeffneSheet({ typ: "hinzufuegen" });
+      document.getElementById("addsuche")?.focus();
+    },
+    plus: (ds) => {
+      S.liste[ds.id] = (S.liste[ds.id] || 0) + 1;
+      delete S.abgehakt[ds.id];
+      S.verlauf = [ds.id, ...(S.verlauf || []).filter((x) => x !== ds.id)].slice(0, 24);
+      nachHinzufuegen(`${Z[ds.id].n}${S.liste[ds.id] > 1 ? ` (${S.liste[ds.id]}×)` : ""} auf der Liste`);
+    },
+    minus: (ds) => {
+      const n = (S.liste[ds.id] || 0) - 1;
+      if (n > 0) S.liste[ds.id] = n; else delete S.liste[ds.id];
+      nachHinzufuegen();
+    },
+    freiNeu: () => {
+      const n = ui.addSuche.trim();
+      if (!n) return;
+      S.freitext = [...(S.freitext || []), { id: `f${Date.now().toString(36)}`, n, anzahl: 1 }];
+      ui.addSuche = "";
+      const feld = document.getElementById("addsuche");
+      if (feld) feld.value = "";
+      nachHinzufuegen(`${n} auf der Liste`);
+    },
+    menge: (ds) => aendern(() => {
+      const n = (S.liste[ds.id] || 0) + Number(ds.delta);
+      if (n > 0) S.liste[ds.id] = n; else delete S.liste[ds.id];
+      if (Number(ds.delta) > 0) delete S.abgehakt[ds.id];
+    }),
+    artikelWeg: (ds) => { ui.sheet = null; aendern(() => { delete S.liste[ds.id]; delete S.abgehakt[ds.id]; }, `${Z[ds.id].n} entfernt`); },
+    freiMenge: (ds) => aendern(() => {
+      const f = S.freitext.find((x) => x.id === ds.id);
+      if (f) f.anzahl = Math.max(1, f.anzahl + Number(ds.delta));
+    }),
+    freiWeg: (ds) => { ui.sheet = null; aendern(() => { S.freitext = S.freitext.filter((x) => x.id !== ds.id); delete S.abgehakt[ds.id]; }, "Entfernt"); },
+    artikel: (ds) => oeffneSheet({ typ: "artikel", id: ds.id }),
+    aufraeumen: () => aendern(aufraeumen, "Gekaufte Artikel entfernt"),
     einkaufAnsicht: (ds) => { ui.einkaufAnsicht = ds.id; render(); },
     teilen: async () => {
-      const liste = L.einkaufsliste(S.plan, S);
-      const v = L.marktVergleich(S.plan, S);
-      const markt = (id) => (v.lohntKombi ? v.kombi.zuordnung[id] : v.einzel[0]?.markt);
-      const kopf = v.lohntKombi ? `${marktName(v.kombi.maerkte[0])} + ${marktName(v.kombi.maerkte[1])}` : marktName(v.einzel[0]?.markt);
-      const zeilen = liste.kaufen.filter((x) => !S.abgehakt[x.id]).map((x) => `☐ ${x.packungen}× ${Z[x.id].n} (${Z[x.id].pl})${v.lohntKombi ? ` – ${marktName(markt(x.id))}` : ""}`);
-      const text = `Einkaufsliste – ${kopf}\n\n${zeilen.join("\n")}`;
+      const liste = L.gesamtListe(S);
+      const v = L.marktVergleich(liste.kaufen, S);
+      const markt = marktWahl(v);
+      const kopf = !liste.kaufen.length ? "" : v.lohntKombi ? ` – ${marktName(v.kombi.maerkte[0])} + ${marktName(v.kombi.maerkte[1])}` : ` – ${marktName(v.einzel[0]?.markt)}`;
+      const zeilen = [
+        ...liste.kaufen.filter((x) => !S.abgehakt[x.id]).map((x) => `☐ ${x.packungen}× ${Z[x.id].n} (${Z[x.id].pl})${v.lohntKombi ? ` – ${marktName(markt(x.id))}` : ""}`),
+        ...liste.frei.filter((f) => !S.abgehakt[f.id]).map((f) => `☐ ${f.anzahl}× ${f.n}`),
+      ];
+      const text = `Einkaufsliste${kopf}\n\n${zeilen.join("\n")}`;
       try {
         if (navigator.share) await navigator.share({ title: "Einkaufsliste", text });
         else { await navigator.clipboard.writeText(text); toast("Liste kopiert"); }
@@ -952,12 +1113,24 @@
     if (el.dataset.input === "suche") {
       ui.suche = el.value;
       document.getElementById("rlist").innerHTML = rezeptListeHtml();
+    } else if (el.dataset.input === "addSuche") {
+      ui.addSuche = el.value;
+      document.getElementById("addgrid").innerHTML = addGridHtml();
     } else if (el.dataset.input === "sheetSuche") {
       ui.sheetSuche = el.value;
       document.getElementById("suglist").innerHTML = vorschlagListe();
     }
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ui.sheet) schliesseSheet(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && ui.sheet) schliesseSheet();
+    // Enter im Suchfeld: genau passenden Artikel hinzufügen, sonst als eigenen Artikel
+    if (e.key === "Enter" && e.target.id === "addsuche" && ui.addSuche.trim()) {
+      e.preventDefault();
+      const exakt = L.suche(ui.addSuche).find((id) => L.normal(Z[id].n) === L.normal(ui.addSuche.trim()));
+      if (exakt) { A.plus({ id: exakt }); ui.addSuche = ""; e.target.value = ""; document.getElementById("addgrid").innerHTML = addGridHtml(); }
+      else A.freiNeu();
+    }
+  });
 
   anwendenTheme();
   render();
