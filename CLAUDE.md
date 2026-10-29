@@ -2,12 +2,12 @@
 
 Statische PWA ohne Build-Schritt und ohne Abhängigkeiten (auf dem Mac gibt es kein node/npm). Reines HTML/CSS/JS, Daten als JS-Dateien mit `window.*`-Globals, damit alles auch per `file://` und offline läuft. Zustand liegt in `localStorage` (`restlos-v1`).
 
-- `data/zutaten.js` – Zutaten mit Packungsgröße, Richtpreis (Discounter), Haltbarkeit nach Öffnen, einfrierbar, Basis-Vorrat, Nährwerte je 100 g (`nw`) und Gramm pro Stück (`g`). Neue Zutaten brauchen beides, sonst fehlen sie in der Nährwertberechnung
+- `data/zutaten.js` – Zutaten mit Packungsgröße, Richtpreis (Discounter), Haltbarkeit nach Öffnen, einfrierbar, Basis-Vorrat, Nährwerte je 100 g (`nw`) und Gramm pro Stück (`g`). Neue Zutaten brauchen beides, sonst fehlen sie in der Nährwertberechnung. `fisch: true` markiert Fisch/Meeresfrüchte, die `tier`-Liste am Dateiende tierische Produkte (für die Filter vegetarisch/vegan)
 - `data/sortiment.js` – ~200 weitere Artikel für die freie Einkaufsliste (Getränke, Snacks, Drogerie, TK …) im Kurzformat; wird in `ZUTATEN` eingemischt (1 Einheit = 1 Packung, `sortiment: true`). Setzt außerdem die Symbole (`e`) der Rezeptzutaten
-- `data/rezepte.js` – Rezepte (keine Fischgerichte – der Nutzer mag keinen Fisch). `opt` = weglassbare Zutat, `aufw: false` = nicht als Rest geeignet
+- `data/rezepte.js` – Rezepte, auch einige Fischgerichte für andere Nutzer (der Nutzer selbst mag keinen Fisch und blendet ihn über Einstellungen → Mag ich nicht → „Kein Fisch“ aus). `opt` = weglassbare Zutat, `aufw: false` = nicht als Rest geeignet. Ernährungsform und Preis pro Gericht werden aus den Zutaten berechnet (`L.ernaehrung`, `L.rezeptPreis`, inkl. Angebote)
 - `data/maerkte.js` – Märkte in 51688 Wipperfürth + Preisfaktoren je Abteilung
 - `data/angebote.js` – Wochenangebote (wird wöchentlich gepflegt, s. u.)
-- `js/logik.js` – Mengen, Einkaufsliste, Marktvergleich, Planer (Kühlschrank-Simulation + gierige Auswahl + lokale Suche)
+- `js/logik.js` – Mengen, Einkaufsliste, Marktvergleich, Planer (Kühlschrank-Simulation + gierige Auswahl + lokale Suche). Geplant wird nach einer Auswahl `{ start, tage, keys: ["0-mittag", …], portionen }` aus dem Planungsfenster; die Einstellungen liefern nur die Vorauswahl je Wochentag
 - `js/app.js` – UI, Event-Delegation über `data-a` / `data-change` / `data-input`
 
 Lokal testen: `python3 -m http.server 8766 --bind 127.0.0.1` im Projektordner.

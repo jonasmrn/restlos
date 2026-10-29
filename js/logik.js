@@ -113,20 +113,52 @@ window.L = (() => {
     return st.einstellungen.maerkte.map((m) => ({ m, p: preis(id, m) })).filter((x) => x.p.angebot);
   }
 
+  // ---------- Kosten eines Gerichts ----------
+  // Anteil der Packungspreise für die verwendeten Mengen (ohne Basis-Vorrat), mit aktuellen Angeboten
+  function rezeptPreis(r, st, portionen = r.s, weg = []) {
+    let preis = 0, normal = 0;
+    for (const z of zutatenFuer(r, portionen, weg, st.einstellungen.ausgeschlossen)) {
+      if (!z.aktiv || istVorrat(z.id, st)) continue;
+      const bp = bestpreis(z.id, st);
+      const anteil = z.menge / Z[z.id].p;
+      preis += anteil * bp.preis;
+      normal += anteil * bp.normal;
+    }
+    return { preis, normal, proPortion: preis / portionen, angebot: normal - preis > 0.05 };
+  }
+
+  // fisch | fleisch | vegetarisch | vegan – aus allen Zutaten (auch optionalen) abgeleitet
+  function ernaehrung(r) {
+    const ids = r.z.map((z) => z[0]);
+    if (ids.some((id) => Z[id].fisch)) return "fisch";
+    if (ids.some((id) => Z[id].cat === "fleisch")) return "fleisch";
+    return ids.some((id) => Z[id].tier) ? "vegetarisch" : "vegan";
+  }
+
   // ---------- Plan-Grundgerüst ----------
-  function slotsListe(st) {
+  // Auswahl = welche Mahlzeiten geplant werden: { start, tage, keys: ["0-mittag", …], portionen }
+  const VORBEI = { fruehstueck: 10, mittag: 14, abend: 21 };
+  // Für heute nur Mahlzeiten planen, die noch nicht vorbei sind
+  const istVorbei = (iso, s) => iso === isoDatum(new Date()) && new Date().getHours() >= VORBEI[s];
+
+  // Vorauswahl aus den Einstellungen (Mahlzeiten je Wochentag)
+  function standardAuswahl(st, start, tage) {
     const e = st.einstellungen;
+    const keys = [];
+    for (let d = 0; d < tage; d++) {
+      const wd = wochentag(plusTage(start, d));
+      for (const s of SLOTS) if (e.mahlzeiten[s][wd]) keys.push(`${d}-${s}`);
+    }
+    return { start, tage, keys, portionen: e.portionen };
+  }
+
+  function slotsListe(st, a) {
+    const keys = new Set(a.keys);
     const out = [];
-    const jetzt = new Date();
-    const heuteIso = isoDatum(jetzt);
-    // Für heute nur Mahlzeiten planen, die noch nicht vorbei sind
-    const vorbei = { fruehstueck: 10, mittag: 14, abend: 21 };
-    for (let d = 0; d < e.tage; d++) {
-      const iso = plusTage(e.start, d);
-      const wd = wochentag(iso);
+    for (let d = 0; d < a.tage; d++) {
+      const iso = plusTage(a.start, d);
       for (const s of SLOTS) {
-        if (!e.mahlzeiten[s][wd]) continue;
-        if (iso === heuteIso && jetzt.getHours() >= vorbei[s]) continue;
+        if (!keys.has(`${d}-${s}`) || istVorbei(iso, s)) continue;
         out.push({ d, s, key: `${d}-${s}`, iso });
       }
     }
@@ -141,9 +173,9 @@ window.L = (() => {
   const uid = () => `k${Date.now().toString(36)}${(uidZaehler++).toString(36)}`;
 
   // Legt fest, wann gekocht wird und welche Mahlzeiten Reste sind.
-  function erstelleGeruest(st) {
-    const P = st.einstellungen.portionen;
-    const slots = slotsListe(st);
+  function erstelleGeruest(st, a) {
+    const P = a.portionen || st.einstellungen.portionen;
+    const slots = slotsListe(st, a);
     const mahlzeiten = {};
     const kochen = {};
     for (const sl of slots) {
@@ -406,6 +438,7 @@ window.L = (() => {
     if (pflicht.includes("haehnchen")) return "gefluegel";
     if (pflicht.some((i) => i === "schwein" || i === "gulasch")) return "schwein_rind";
     if (pflicht.some((i) => i === "speck" || i === "bratwurst" || i === "kochschinken")) return "wurst";
+    if (pflicht.some((i) => Z[i].fisch)) return "fisch";
     return "veggie";
   }
   const VIELFALT_TAGS = ["pasta", "curry", "suppe", "wraps", "salat", "auflauf", "bowl"];
@@ -552,16 +585,10 @@ window.L = (() => {
     return plan;
   }
 
-  function neuerPlan(st) {
-    const g = erstelleGeruest(st);
-    const plan = { start: st.einstellungen.start, tage: st.einstellungen.tage, ...g, erstellt: new Date().toISOString() };
-    return fuelle(plan, st);
+  function leererPlan(st, a) {
+    return { start: a.start, tage: a.tage, auswahl: a, ...erstelleGeruest(st, a), erstellt: new Date().toISOString() };
   }
-
-  function leererPlan(st) {
-    const g = erstelleGeruest(st);
-    return { start: st.einstellungen.start, tage: st.einstellungen.tage, ...g, erstellt: new Date().toISOString() };
-  }
+  const neuerPlan = (st, a) => fuelle(leererPlan(st, a), st);
 
   // Rezepte, die gut mit einem Rezept kombinierbar sind (teilen angebrochene Packungen)
   function passtGutZu(r, st, n = 4) {
@@ -602,6 +629,7 @@ window.L = (() => {
     zahl, menge, euro,
     zutatenFuer, naehrwerte, kernKonflikte, istVorrat, verderblich,
     preis, bestpreis, angebotFuer, angeboteFuerZutat,
+    rezeptPreis, ernaehrung, istVorbei, standardAuswahl,
     slotsListe, slotOrder, erstelleGeruest, portionenInfo, kochListe, uid,
     bedarf, einkaufsliste, gesamtListe, suche, normal, reste, marktVergleich, planKosten,
     neuerPlan, leererPlan, fuelle, vorschlaege, passtGutZu, kandidaten, simuliere, ziel, proteinGruppe,

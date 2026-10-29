@@ -11,7 +11,7 @@
   function standard() {
     return {
       einstellungen: {
-        start: heute(),
+        startModus: "heute",
         tage: 7,
         portionen: 2,
         mahlzeiten: {
@@ -41,8 +41,12 @@
       verlauf: [],
     };
   }
-  function laden() {
+  // Gespeicherten Zustand mit den Standardwerten zusammenführen (neue Felder bekommen Defaults)
+  function zusammenfuehren(s) {
     const s0 = standard();
+    return { ...s0, ...s, einstellungen: { ...s0.einstellungen, ...s.einstellungen, mahlzeiten: { ...s0.einstellungen.mahlzeiten, ...(s.einstellungen?.mahlzeiten || {}) } } };
+  }
+  function laden() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (s && typeof s === "object") {
@@ -52,17 +56,19 @@
           for (const id of s.favoriten) s.bewertungen[id] ??= 5;
           s.favoriten = [];
         }
-        return { ...s0, ...s, einstellungen: { ...s0.einstellungen, ...s.einstellungen, mahlzeiten: { ...s0.einstellungen.mahlzeiten, ...(s.einstellungen?.mahlzeiten || {}) } } };
+        return zusammenfuehren(s);
       }
     } catch (e) { /* leerer oder gesperrter Speicher */ }
-    return s0;
+    return standard();
   }
   let S = laden();
   function speichern() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignorieren */ }
   }
 
-  const ui = { tab: "plan", filter: "alle", zutatFilter: null, suche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null };
+  // Rezeptfilter: mahl/extra/kueche = Mehrfachauswahl, zut = { id: 1 (muss rein) | -1 (soll nicht rein) }
+  const RF0 = () => ({ mahl: [], ern: null, zeit: null, preis: null, extra: [], kueche: [], meine: null, zut: {}, sort: "empfohlen", abneigung: false });
+  const ui = { tab: "plan", rf: RF0(), suche: "", zutSuche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null, planer: null };
   try { ui.tab = sessionStorage.getItem("restlos-tab") || "plan"; } catch (e) { /* egal */ }
 
   // ---------- Hilfen ----------
@@ -145,11 +151,14 @@
     g.portionen -= 1;
     if (g.portionen <= 0) S.gefroren.splice(idx, 1);
   }
-  function neuPlanen() {
-    S.plan = L.neuerPlan(S);
+  function neuPlanen(auswahl) {
+    if (S.plan) S.zuletzt = [...new Set(L.kochListe(S.plan).map((k) => k.rid).filter(Boolean))];
+    S.plan = L.neuerPlan(S, auswahl);
     aufraeumen();
     S.abgehakt = {};
   }
+  // Auswahl des aktuellen Plans (ältere Pläne ohne gespeicherte Auswahl: aus den Einstellungen)
+  const planAuswahl = (p) => p.auswahl || L.standardAuswahl(S, p.start, p.tage);
 
   function wocheAbschliessen() {
     const p = S.plan;
@@ -177,7 +186,6 @@
     S.plan = null;
     S.abgehakt = {};
     S.habeIch = {};
-    S.einstellungen.start = heute();
   }
 
   // ---------- Render: Rahmen ----------
@@ -191,7 +199,7 @@
 
   function kopf() {
     const t = {
-      plan: ["Wochenplan", S.plan ? `${L.datumKurz(S.plan.start)} – ${L.datumKurz(L.plusTage(S.plan.start, S.plan.tage - 1))}` : "Restlos – weniger wegwerfen"],
+      plan: S.plan ? ["Wochenplan", zeitraum(S.plan.start, S.plan.tage)] : [gruss(), new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })],
       rezepte: ["Rezepte", `${window.REZEPTE.length} Gerichte`],
       einkauf: ["Einkauf", S.plan ? "Wochenplan + eigene Artikel" : "deine Liste"],
       angebote: ["Angebote", window.ANGEBOTE?.von ? `${fmtDatum(window.ANGEBOTE.von)} – ${fmtDatum(window.ANGEBOTE.bis)}` : "Wipperfürth"],
@@ -200,6 +208,11 @@
     return `<header class="top"><div class="grow"><h1>${t[0]}</h1>${t[1] ? `<div class="sub">${esc(t[1])}</div>` : ""}</div></header>`;
   }
   const fmtDatum = (iso) => (iso ? L.datumKurz(iso) : "");
+  const zeitraum = (start, tage) => (tage > 1 ? `${L.datumKurz(start)} – ${L.datumKurz(L.plusTage(start, tage - 1))}` : L.datumKurz(start));
+  function gruss() {
+    const h = new Date().getHours();
+    return h < 11 ? "Guten Morgen" : h < 17 ? "Hallo" : "Guten Abend";
+  }
 
   function navigation() {
     const gl = L.gesamtListe(S);
@@ -222,34 +235,18 @@
 
   // ---------- Ansicht: Plan ----------
   function viewPlan() {
-    if (!S.plan) {
-      const w = S.wuensche.length;
-      return `<div class="card hero">
-        <div class="big">🥕</div>
-        <h2>Lass uns deine Woche planen</h2>
-        <p>Restlos sucht Gerichte, die sich Zutaten teilen. So brauchst du angebrochene Packungen auf und isst trotzdem jeden Tag etwas anderes.</p>
-        <div class="stack">
-          <button class="btn primary block" data-a="planNeu">✨ Plan vorschlagen</button>
-          <button class="btn block" data-a="planLeer">✍️ Selbst zusammenstellen</button>
-        </div>
-        ${w ? `<p class="small" style="margin-top:14px">⭐ ${plural(w, "Gericht", "Gerichte")} von deiner Wunschliste werden eingeplant.</p>` : `<p class="small" style="margin-top:14px">Tipp: Markiere unter <b>Rezepte</b> Gerichte mit ⭐, auf die du Lust hast. Sie werden dann fest eingeplant.</p>`}
-      </div>
-      ${S.gefroren.length ? `<div class="card flat"><b>🧊 Im Tiefkühler</b><div class="small muted">${S.gefroren.map((g) => `${g.portionen}× ${esc(REZ[g.rid]?.n || "")}`).join(" · ")}</div></div>` : ""}
-      <div class="card flat small muted">Mahlzeiten, Portionen und Abneigungen stellst du unter <b>Einstellungen</b> ein. Aktuell: ${zusammenfassungEinstellungen()}.</div>`;
-    }
+    if (!S.plan) return viewStart();
     const p = S.plan;
     const kochen = L.kochListe(p).filter((k) => k.rid);
     const kosten = L.planKosten(p, S);
     const reste = L.reste(p, S);
     const kritisch = reste.filter((r) => r.status === "verderblich");
-    const geaendert = p.start !== S.einstellungen.start || p.tage !== S.einstellungen.tage;
 
     let html = `<div class="stats">
       <div class="stat"><b>${kochen.filter((k) => k.typ !== "fruehstueck").length}×</b><span>kochen</span></div>
       <div class="stat"><b>${kosten != null ? L.euro(kosten).replace(/\s?€/, " €") : "–"}</b><span>Einkauf ca.</span></div>
       <div class="stat"><b>${kritisch.length ? `${kritisch.length} ⚠️` : "✓"}</b><span>${kritisch.length ? "Reste verderblich" : "kaum Reste"}</span></div>
     </div>`;
-    if (geaendert) html += `<div class="note small">Du hast Startdatum oder Planlänge geändert. <button class="btn sm" data-a="planNeu" style="margin-left:6px">Neu planen</button></div>`;
 
     for (let d = 0; d < p.tage; d++) {
       const iso = L.plusTage(p.start, d);
@@ -265,6 +262,7 @@
     html += `<div class="btns" style="margin:14px 0">
       <button class="btn" data-a="planNeu">🔄 Neu vorschlagen</button>
       <button class="btn" data-a="planFuellen">🧩 Lücken füllen</button>
+      <button class="btn" data-a="planDialog" data-modus="auto" data-quelle="plan">🗓️ Zeitraum ändern</button>
     </div>`;
 
     html += resteKarte(p, reste);
@@ -289,12 +287,129 @@
     return 0;
   }
 
-  function zusammenfassungEinstellungen() {
-    const e = S.einstellungen;
-    const f = e.mahlzeiten.fruehstueck.filter(Boolean).length;
-    const m = e.mahlzeiten.mittag.filter(Boolean).length;
-    const a = e.mahlzeiten.abend.filter(Boolean).length;
-    return `${e.tage} Tage, Frühstück ${f}×, Mittag ${m}×, Abend ${a}×, ${e.portionen} Portionen pro Kochen`;
+  // ---------- Startbildschirm (noch kein Plan) ----------
+  function viewStart() {
+    const a = L.standardAuswahl(S, standardStart(), S.einstellungen.tage);
+    const w = S.wuensche.filter((id) => REZ[id]).length;
+    const ms = S.einstellungen.maerkte;
+    const angebote = (window.ANGEBOTE?.liste || []).filter((x) => ms.includes(x.markt) && Z[x.zutat]).length;
+    const tk = S.gefroren.reduce((n, g) => n + g.portionen, 0);
+    return `<section class="start-hero">
+        <div class="deko" aria-hidden="true"><span>🥕</span><span>🍅</span><span>🧅</span><span>🥦</span><span>🍋</span></div>
+        <span class="pill">🗓️ ${esc(zeitraum(a.start, a.tage))}</span>
+        <h2>Was kommt diese Woche auf den Tisch?</h2>
+        <p>Restlos kombiniert Gerichte, die sich Zutaten teilen. So wird jede angebrochene Packung aufgebraucht.</p>
+        <button class="hero-btn" data-a="planDialog" data-modus="auto">✨ Plan vorschlagen</button>
+      </section>
+      <button class="choice" data-a="planDialog" data-modus="leer">
+        <span class="choice-i">✍️</span>
+        <span class="grow"><b>Selbst zusammenstellen</b><span>Du wählst die Gerichte, Restlos zeigt dir, was zu deinen Resten passt.</span></span>
+        <span class="chev">›</span>
+      </button>
+      <div class="mini">
+        <button data-a="startWunsch"><b>⭐ ${w}</b><span>${w ? "Wünsche werden eingeplant" : "Wunschliste"}</span></button>
+        <button data-a="tab" data-id="angebote"><b>🏷️ ${angebote}</b><span>Angebote diese Woche</span></button>
+        <button data-a="tab" data-id="mehr"><b>🧊 ${tk}</b><span>${tk === 1 ? "Portion" : "Portionen"} im Tiefkühler</span></button>
+      </div>
+      <div class="sec-h"><h3>Lust auf …?</h3><button class="link" data-a="tab" data-id="rezepte">Alle ${window.REZEPTE.length} Rezepte ›</button></div>
+      <div class="hscroll">${lustAuf().map((r) => {
+        const pr = L.rezeptPreis(r, S);
+        return `<button class="lcard" data-a="rezept" data-id="${r.id}"><span class="em">${r.e}</span><span class="t">${esc(r.n)}</span>
+          <span class="meta">${r.t} Min. · <span class="${pr.angebot ? "offer" : ""}">${pr.angebot ? "🏷️ " : ""}${L.euro(pr.preis)}</span></span></button>`;
+      }).join("")}</div>
+      <p class="tiny muted center" style="margin-top:14px">Tippe ein Gericht an und setze es mit ⭐ auf die Wunschliste, dann kommt es fest in den Plan.</p>`;
+  }
+  // Abwechselnde Vorschläge: Wünsche, Angebote und Lieblingsgerichte zuerst, sonst täglich neu gemischt
+  function lustAuf() {
+    const tag = heute();
+    const zufall = (id) => { let h = 0; for (const c of id + tag) h = (h * 31 + c.charCodeAt(0)) >>> 0; return (h % 1000) / 1000; };
+    return window.REZEPTE
+      .filter((r) => !r.m.every((m) => m === "fruehstueck") && !S.gesperrt.includes(r.id) && !L.kernKonflikte(r, S.einstellungen.ausgeschlossen).length)
+      .map((r) => ({ r, w: zufall(r.id) * 3 + (S.wuensche.includes(r.id) ? 5 : 0) + (L.rezeptPreis(r, S).angebot ? 1.5 : 0) + ((S.bewertungen[r.id] || 3) - 3) }))
+      .sort((a, b) => b.w - a.w)
+      .slice(0, 8)
+      .map((x) => x.r);
+  }
+  function standardStart() {
+    const m = S.einstellungen.startModus || "heute";
+    const h = heute();
+    if (m === "morgen") return L.plusTage(h, 1);
+    if (/^[0-6]$/.test(m)) return L.plusTage(h, (Number(m) - L.wochentag(h) + 7) % 7);
+    return h;
+  }
+
+  // ---------- Planungsfenster: Zeitraum und Mahlzeiten ----------
+  const tageZwischen = (a, b) => Math.round((L.ausIso(b) - L.ausIso(a)) / 864e5);
+  function planerOeffnen(modus, quelle) {
+    const a = quelle || L.standardAuswahl(S, standardStart(), S.einstellungen.tage);
+    const keys = new Set(a.keys);
+    const wahl = {};
+    for (let d = 0; d < a.tage; d++) wahl[L.plusTage(a.start, d)] = Object.fromEntries(L.SLOTS.map((s) => [s, keys.has(`${d}-${s}`)]));
+    ui.planer = { modus, start: a.start, ende: L.plusTage(a.start, a.tage - 1), wahl, portionen: a.portionen || S.einstellungen.portionen, phase: "start" };
+    oeffneSheet({ typ: "planer" });
+  }
+  // Mahlzeiten eines Tages – neue Tage bekommen die Vorauswahl aus den Einstellungen
+  function planerTag(iso) {
+    const wd = L.wochentag(iso);
+    return (ui.planer.wahl[iso] ||= Object.fromEntries(L.SLOTS.map((s) => [s, !!S.einstellungen.mahlzeiten[s][wd]])));
+  }
+  const planerTage = () => Array.from({ length: tageZwischen(ui.planer.start, ui.planer.ende) + 1 }, (_, d) => L.plusTage(ui.planer.start, d));
+  function planerAuswahl() {
+    const P = ui.planer;
+    const keys = [];
+    planerTage().forEach((iso, d) => { for (const s of L.SLOTS) if (planerTag(iso)[s] && !L.istVorbei(iso, s)) keys.push(`${d}-${s}`); });
+    return { start: P.start, tage: tageZwischen(P.start, P.ende) + 1, keys, portionen: P.portionen };
+  }
+  function sheetPlaner() {
+    const P = ui.planer;
+    const h = heute();
+    const tage = planerTage();
+    const a = planerAuswahl();
+    // Kalender ab Montag der Woche, mindestens drei Wochen
+    const von = L.plusTage(P.start < h ? P.start : h, -L.wochentag(P.start < h ? P.start : h));
+    let bis = [P.ende, L.plusTage(h, 20)].sort()[1];
+    bis = L.plusTage(bis, 6 - L.wochentag(bis));
+    const zellen = [];
+    for (let iso = von; iso <= bis; iso = L.plusTage(iso, 1)) {
+      const d = L.ausIso(iso);
+      const cls = [iso < h ? "alt" : "", iso >= P.start && iso <= P.ende ? "in" : "", iso === P.start ? "von" : "", iso === P.ende ? "bis" : "", iso === h ? "heute" : ""].join(" ");
+      zellen.push(`<button class="kal-d ${cls}" data-a="planerDatum" data-iso="${iso}" ${iso < h ? "disabled" : ""} aria-label="${L.datumKurz(iso)}">${d.getDate()}${d.getDate() === 1 || iso === von ? `<small>${d.toLocaleDateString("de-DE", { month: "short" })}</small>` : ""}</button>`);
+    }
+    const naechsterMo = L.plusTage(h, 7 - L.wochentag(h));
+    const presets = [
+      ["Rest der Woche", h, L.plusTage(h, 6 - L.wochentag(h))],
+      ["Nächste Woche", naechsterMo, L.plusTage(naechsterMo, 6)],
+      ["7 Tage ab heute", h, L.plusTage(h, 6)],
+      ["Wochenende", L.plusTage(h, (5 - L.wochentag(h) + 7) % 7), L.plusTage(h, (5 - L.wochentag(h) + 7) % 7 + 1)],
+    ];
+    const zaehl = a.keys.length;
+    const leer = P.modus === "leer";
+    return sheetKopf(leer ? "✍️ Plan selbst zusammenstellen" : "✨ Neue Woche planen", "Für welche Tage und Mahlzeiten?") + `
+      <div class="card">
+        <div class="row between"><h2 style="margin:0">Zeitraum</h2><span class="badge green">${plural(tage.length, "Tag", "Tage")}</span></div>
+        <div class="range"><span><small>von</small><b>${L.datumKurz(P.start)}</b></span><span class="pfeil">→</span><span><small>bis</small><b>${L.datumKurz(P.ende)}</b></span></div>
+        <div class="chips scroll" style="margin-bottom:8px">${presets.map(([n, v, b]) => `<button class="chip ${v === P.start && b === P.ende ? "on" : ""}" data-a="planerPreset" data-von="${v}" data-bis="${b}">${n}</button>`).join("")}</div>
+        <div class="kal">${L.TAGE.map((t) => `<span class="kal-h">${t}</span>`).join("")}${zellen.join("")}</div>
+        <p class="tiny muted" style="margin:8px 0 0">${P.phase === "ende" ? "👉 Jetzt den <b>letzten Tag</b> antippen." : "Tippe auf den ersten und dann auf den letzten Tag (bis zu 14 Tage)."}</p>
+      </div>
+      <div class="card">
+        <div class="row between"><h2 style="margin:0">Mahlzeiten</h2><span class="badge ${zaehl ? "green" : "warn"}">${plural(zaehl, "Mahlzeit", "Mahlzeiten")}</span></div>
+        <p class="tiny muted" style="margin:4px 0 10px">Tippe auf eine Spaltenüberschrift, um sie für alle Tage umzuschalten.</p>
+        <div class="mgrid"><span></span>${L.SLOTS.map((s) => `<button class="mg-h" data-a="planerSpalte" data-s="${s}"><span>${L.SLOT_ICON[s]}</span>${L.SLOT_NAME[s]}</button>`).join("")}
+          ${tage.map((iso) => {
+            const w = planerTag(iso);
+            return `<span class="mg-d">${L.TAGE[L.wochentag(iso)]}<small>${L.ausIso(iso).getDate()}.${L.ausIso(iso).getMonth() + 1}.</small></span>` + L.SLOTS.map((s) => L.istVorbei(iso, s)
+              ? `<span class="mg-t vorbei" title="schon vorbei">–</span>`
+              : `<button class="mg-t ${w[s] ? "on" : ""}" data-a="planerSlot" data-iso="${iso}" data-s="${s}" aria-label="${L.SLOT_NAME[s]} ${L.datumKurz(iso)}" aria-pressed="${w[s]}">${w[s] ? "✓" : ""}</button>`).join("");
+          }).join("")}
+        </div>
+      </div>
+      <div class="card"><div class="row between"><span><b>Portionen pro Kochen</b><span class="tiny muted" style="display:block">2 = einmal frisch, einmal als Rest am nächsten Tag</span></span>
+        <span class="stepper"><button data-a="planerPortion" data-delta="-1" aria-label="weniger">−</button><span>${P.portionen}</span><button data-a="planerPortion" data-delta="1" aria-label="mehr">+</button></span></div></div>
+      <div class="sheet-foot">
+        <button class="btn primary block" data-a="planerLos" ${zaehl ? "" : "disabled"}>${leer ? "✍️ Leeren Plan anlegen" : S.plan ? "✨ Neuen Plan erstellen" : "✨ Plan erstellen"}</button>
+        <p class="tiny muted center" style="margin:6px 0 0">Die Vorauswahl änderst du unter <b>Einstellungen → Planung</b>.</p>
+      </div>`;
   }
 
   function mahlzeitZeile(key) {
@@ -353,47 +468,82 @@
   }
 
   // ---------- Ansicht: Rezepte ----------
-  const FILTER = [
-    ["alle", "Alle"],
-    ["wunsch", "⭐ Wunschliste"],
-    ["top", "★ Top bewertet"],
-    ["abend", "Abendessen"],
-    ["mittag", "Mittag"],
-    ["fruehstueck", "Frühstück"],
-    ["vegetarisch", "Vegetarisch"],
-    ["schnell", "≤ 25 Min."],
-    ["ofen", "Ofen/Airfryer"],
-    ["neu", "Mal was Neues"],
-    ["angebot", "🏷️ Im Angebot"],
-  ];
-  function rezeptFilter(r) {
-    const f = ui.filter;
-    if (f !== "gesperrt" && S.gesperrt.includes(r.id)) return false;
-    if (ui.zutatFilter && !r.z.some((z) => z[0] === ui.zutatFilter)) return false;
+  const ERN = [["vegetarisch", "🥦 Vegetarisch"], ["vegan", "🌱 Vegan"], ["fleisch", "🥩 Mit Fleisch"], ["fisch", "🐟 Mit Fisch"]];
+  const ZEIT = [[15, "≤ 15 Min."], [25, "≤ 25 Min."], [40, "≤ 40 Min."]];
+  const PREIS = [[2, "≤ 2 €"], [3, "≤ 3 €"], [5, "≤ 5 €"], [10, "≤ 10 €"]];
+  const EXTRA = {
+    ofen: ["Ofen", (r) => r.geraet === "ofen"],
+    airfryer: ["Airfryer", (r) => r.geraet === "airfryer"],
+    fz: ["🧊 Einfrierbar", (r) => !!r.fz],
+    rest: ["↩️ Gut als Rest", (r) => r.aufw !== false && !r.m.every((m) => m === "fruehstueck")],
+    mitnehmen: ["🎒 Zum Mitnehmen", (r) => r.tags.includes("mitnehmen")],
+  };
+  const MEINE = {
+    wunsch: ["⭐ Wunschliste", (r) => S.wuensche.includes(r.id)],
+    top: ["★ Top bewertet", (r) => (S.bewertungen[r.id] || 0) >= 4],
+    angebot: ["🏷️ Im Angebot", (r) => L.rezeptPreis(r, S).angebot],
+    neu: ["✨ Mal was Neues", (r) => r.tags.includes("neu")],
+    gesperrt: ["🚫 Ausgeblendete", () => true],
+  };
+  const SORT = [["empfohlen", "Empfohlen"], ["preis", "Günstigste"], ["zeit", "Schnellste"], ["kcal", "Wenigste kcal"], ["eiweiss", "Meistes Eiweiß"]];
+  const KUECHEN = ["deutsch", "italienisch", "asiatisch", "indisch", "mexikanisch", "griechisch", "orientalisch", "skandinavisch", "amerikanisch", "französisch"];
+  // Schnellfilter direkt unter der Suche: [Label, Schlüssel, Wert]
+  const SCHNELL = [["⭐ Wunschliste", "meine", "wunsch"], ["🥦 Vegetarisch", "ern", "vegetarisch"], ["⚡ ≤ 25 Min.", "zeit", 25], ["💶 ≤ 5 €", "preis", 5],
+    ["🏷️ Angebot", "meine", "angebot"], ["🐟 Fisch", "ern", "fisch"], ["☕ Frühstück", "mahl", "fruehstueck"], ["🍽️ Abend", "mahl", "abend"]];
+  const rfAktiv = (k, v) => (Array.isArray(ui.rf[k]) ? ui.rf[k].includes(v) : ui.rf[k] === v);
+  function rfSetzen(k, v) {
+    const rf = ui.rf;
+    if (Array.isArray(rf[k])) rf[k] = rf[k].includes(v) ? rf[k].filter((x) => x !== v) : [...rf[k], v];
+    else if (k === "sort") rf.sort = v;
+    else rf[k] = rf[k] === v ? null : v;
+  }
+  const rfAnzahl = (rf = ui.rf) => rf.mahl.length + rf.extra.length + rf.kueche.length + Object.keys(rf.zut).length + ["ern", "zeit", "preis", "meine"].filter((k) => rf[k] != null).length + (rf.abneigung ? 1 : 0);
+
+  function rezeptFilter(r, rf = ui.rf, mitAbneigung = rf.abneigung) {
+    const gesperrt = S.gesperrt.includes(r.id);
+    if (rf.meine === "gesperrt" ? !gesperrt : gesperrt) return false;
+    if (!mitAbneigung && rf.meine !== "gesperrt" && L.kernKonflikte(r, S.einstellungen.ausgeschlossen).length) return false;
     if (ui.suche) {
-      const q = ui.suche.toLowerCase();
-      const treffer = r.n.toLowerCase().includes(q) || r.tags.some((t) => t.includes(q)) || r.z.some((z) => Z[z[0]].n.toLowerCase().includes(q));
+      const q = L.normal(ui.suche);
+      const treffer = L.normal(r.n).includes(q) || r.tags.some((t) => L.normal(t).includes(q)) || r.z.some((z) => L.normal(Z[z[0]].n).includes(q));
       if (!treffer) return false;
     }
-    switch (f) {
-      case "wunsch": return S.wuensche.includes(r.id);
-      case "top": return (S.bewertungen[r.id] || 0) >= 4;
-      case "gesperrt": return S.gesperrt.includes(r.id);
-      case "abend": case "mittag": case "fruehstueck": return r.m.includes(f);
-      case "vegetarisch": return r.tags.includes("vegetarisch") || r.tags.includes("vegan");
-      case "schnell": return r.t <= 25;
-      case "ofen": return !!r.geraet;
-      case "neu": return r.tags.includes("neu");
-      case "angebot": return r.z.some((z) => !Z[z[0]].vorrat && L.angeboteFuerZutat(z[0], S).length);
-      default: return true;
+    if (rf.mahl.length && !rf.mahl.some((m) => r.m.includes(m))) return false;
+    if (rf.ern) {
+      const e = L.ernaehrung(r);
+      if (rf.ern === "vegetarisch" ? e !== "vegetarisch" && e !== "vegan" : e !== rf.ern) return false;
     }
+    if (rf.zeit && r.t > rf.zeit) return false;
+    if (rf.kueche.length && !rf.kueche.some((k) => r.tags.includes(k))) return false;
+    if (rf.extra.some((x) => !EXTRA[x][1](r))) return false;
+    if (rf.meine && rf.meine !== "gesperrt" && !MEINE[rf.meine][1](r)) return false;
+    for (const [id, v] of Object.entries(rf.zut)) {
+      const z = r.z.find((x) => x[0] === id);
+      if (v === 1 && !z) return false;
+      if (v === -1 && z && z[2] !== "opt") return false;
+    }
+    if (rf.preis && L.rezeptPreis(r, S).preis > rf.preis + 0.005) return false;
+    return true;
+  }
+  function gefilterteRezepte() {
+    const liste = window.REZEPTE.filter((r) => rezeptFilter(r));
+    const wert = {
+      empfohlen: (r) => -(S.wuensche.includes(r.id) ? 10 : 0) - (S.bewertungen[r.id] || 0),
+      preis: (r) => L.rezeptPreis(r, S).preis,
+      zeit: (r) => r.t,
+      kcal: (r) => kcalVon(r),
+      eiweiss: (r) => -L.naehrwerte(r, r.s, [], S.einstellungen.ausgeschlossen).eiweiss,
+    }[ui.rf.sort];
+    const w = new Map(liste.map((r) => [r.id, wert(r)]));
+    return liste.sort((a, b) => w.get(a.id) - w.get(b.id));
   }
   function rezeptKarte(r) {
     const aus = S.einstellungen.ausgeschlossen;
     const konflikt = L.kernKonflikte(r, aus);
     const ohne = r.z.filter((z) => z[2] === "opt" && aus.includes(z[0]));
-    const angebot = r.z.some((z) => !Z[z[0]].vorrat && L.angeboteFuerZutat(z[0], S).length);
+    const pr = L.rezeptPreis(r, S);
     const mahl = r.m.map((m) => L.SLOT_NAME[m]).join(" · ");
+    const ern = { vegan: "🌱 vegan", vegetarisch: "🥦 vegetarisch", fisch: "🐟 Fisch" }[L.ernaehrung(r)];
     return `<button class="rcard ${konflikt.length ? "dim" : ""}" data-a="rezept" data-id="${r.id}">
       <span class="em">${r.e}</span>
       <span class="grow"><div class="t">${esc(r.n)}${kcalTag(kcalVon(r))}</div>
@@ -402,26 +552,76 @@
           ${S.wuensche.includes(r.id) ? `<span class="badge accent">⭐ Wunsch</span>` : ""}
           ${S.bewertungen[r.id] ? `<span class="badge accent">${"★".repeat(S.bewertungen[r.id])}</span>` : ""}
           ${S.gesperrt.includes(r.id) ? `<span class="badge warn">🚫 ausgeblendet</span>` : ""}
-          ${angebot ? `<span class="badge offer">🏷️ Angebot</span>` : ""}
+          ${ern ? `<span class="badge">${ern}</span>` : ""}
           ${r.fz ? `<span class="badge">🧊 einfrierbar</span>` : ""}
           ${konflikt.length ? `<span class="badge warn">enthält ${esc(konflikt.map((id) => Z[id].n).join(", "))}</span>` : ""}
           ${ohne.length ? `<span class="badge green">ohne ${esc(ohne.map((z) => Z[z[0]].n).join(", "))}</span>` : ""}
         </div>
-      </span></button>`;
+      </span>
+      <span class="rpreis ${pr.angebot ? "offer" : ""}"><b>${pr.angebot ? "🏷️ " : ""}${L.euro(pr.preis)}</b><small>${r.s === 1 ? "1 Portion" : `${r.s} Portionen`}</small>${pr.angebot ? `<s>${L.euro(pr.normal)}</s>` : ""}</span></button>`;
   }
   function rezeptListeHtml() {
-    const liste = window.REZEPTE.filter(rezeptFilter);
-    if (!liste.length) return `<p class="muted center" style="padding:30px 0">Keine passenden Rezepte gefunden.</p>`;
-    return `<div class="rgrid">${liste.map(rezeptKarte).join("")}</div>`;
+    const liste = gefilterteRezepte();
+    const versteckt = ui.rf.abneigung ? 0 : window.REZEPTE.filter((r) => !rezeptFilter(r) && rezeptFilter(r, ui.rf, true)).length;
+    const sortName = SORT.find((x) => x[0] === ui.rf.sort)[1];
+    let html = `<div class="row between tiny muted" style="margin-top:10px"><span>${plural(liste.length, "Gericht", "Gerichte")}${ui.rf.sort !== "empfohlen" ? ` · ${sortName}` : ""}</span>
+      ${versteckt ? `<button class="link tiny" data-a="rf" data-k="abneigung">+ ${versteckt} mit Abneigungen zeigen</button>` : ""}</div>`;
+    if (!liste.length) {
+      html += `<p class="muted center" style="padding:30px 0">Keine passenden Rezepte gefunden.${rfAnzahl() ? `<br><button class="btn sm" style="margin-top:10px" data-a="rfReset">Filter zurücksetzen</button>` : ""}</p>`;
+      return html;
+    }
+    return html + `<div class="rgrid">${liste.map(rezeptKarte).join("")}</div>`;
+  }
+  function schnellChips() {
+    const zut = Object.entries(ui.rf.zut).map(([id, v]) => `<button class="chip ${v === 1 ? "on" : "neg"}" data-a="rfZut" data-id="${id}" data-weg="1">${v === 1 ? "mit" : "ohne"} ${esc(Z[id].n)} <span class="x">✕</span></button>`);
+    return zut.join("") + SCHNELL.map(([n, k, v], i) => `<button class="chip ${rfAktiv(k, v) ? "on" : ""}" data-a="rfSchnell" data-i="${i}">${n}${k === "meine" && v === "wunsch" && S.wuensche.length ? ` (${S.wuensche.length})` : ""}</button>`).join("");
   }
   function viewRezepte() {
-    return `<input class="search" type="search" placeholder="Suchen: Gericht oder Zutat, z. B. Hack" value="${esc(ui.suche)}" data-input="suche" aria-label="Rezepte durchsuchen">
-      <div class="chips scroll" style="margin-top:10px">
-        ${ui.zutatFilter ? `<button class="chip on" data-a="zutatFilterWeg">mit ${esc(Z[ui.zutatFilter].n)} <span class="x">✕</span></button>` : ""}
-        ${FILTER.map(([id, n]) => `<button class="chip ${ui.filter === id ? "on" : ""}" data-a="filter" data-id="${id}">${n}${id === "wunsch" && S.wuensche.length ? ` (${S.wuensche.length})` : ""}</button>`).join("")}
-        ${S.gesperrt.length ? `<button class="chip ${ui.filter === "gesperrt" ? "on" : ""}" data-a="filter" data-id="gesperrt">🚫 Ausgeblendet (${S.gesperrt.length})</button>` : ""}
-      </div>
+    const n = rfAnzahl();
+    return `<div class="row"><input class="search grow" type="search" placeholder="Gericht oder Zutat, z. B. Hack" value="${esc(ui.suche)}" data-input="suche" aria-label="Rezepte durchsuchen">
+        <button class="filterbtn ${n ? "on" : ""}" data-a="filterSheet" aria-label="Filter">☰ Filter${n ? `<span class="dot">${n}</span>` : ""}</button></div>
+      <div class="chips scroll" style="margin-top:10px" id="rchips">${schnellChips()}</div>
       <div id="rlist">${rezeptListeHtml()}</div>`;
+  }
+
+  // ---------- Sheet: Filter ----------
+  function sheetFilter() {
+    const rf = ui.rf;
+    const gruppe = (titel, k, opts, hinweis = "") => `<div class="fgroup"><h3>${titel}${hinweis ? ` <span class="tiny muted" style="font-weight:500">${hinweis}</span>` : ""}</h3><div class="chips">${opts.map(([v, n]) =>
+      `<button class="chip ${rfAktiv(k, v) ? "on" : ""}" data-a="rf" data-k="${k}" data-v="${v}">${n}</button>`).join("")}</div></div>`;
+    const kuechen = KUECHEN.filter((k) => window.REZEPTE.some((r) => r.tags.includes(k)));
+    const treffer = gefilterteRezepte().length;
+    return sheetKopf("Rezepte filtern") + `
+      ${gruppe("Sortieren", "sort", SORT)}
+      ${gruppe("Mahlzeit", "mahl", L.SLOTS.map((s) => [s, `${L.SLOT_ICON[s]} ${L.SLOT_NAME[s]}`]))}
+      ${gruppe("Ernährung", "ern", ERN)}
+      ${gruppe("Preis", "preis", PREIS, "pro Gericht, mit aktuellen Angeboten")}
+      ${gruppe("Zeit", "zeit", ZEIT)}
+      <div class="fgroup"><h3>Zutaten <span class="tiny muted" style="font-weight:500">1× tippen = muss rein, 2× = soll nicht rein</span></h3>
+        <input class="search" type="search" placeholder="Zutat suchen, z. B. Paprika" value="${esc(ui.zutSuche)}" data-input="zutSuche" aria-label="Zutat suchen">
+        <div class="chips" id="zutchips" style="margin-top:8px">${zutatChipsHtml()}</div></div>
+      ${gruppe("Zubereitung", "extra", Object.entries(EXTRA).map(([v, [n]]) => [v, n]))}
+      ${gruppe("Küche", "kueche", kuechen.map((k) => [k, k[0].toUpperCase() + k.slice(1)]))}
+      ${gruppe("Meine Gerichte", "meine", Object.entries(MEINE).filter(([v]) => v !== "gesperrt" || S.gesperrt.length).map(([v, [n]]) => [v, n]))}
+      <div class="fgroup field" style="border:0"><span class="lbl">Gerichte mit Abneigungen zeigen<span class="hint">Zutaten unter Einstellungen → Mag ich nicht</span></span>
+        <button class="switch ${rf.abneigung ? "on" : ""}" data-a="rf" data-k="abneigung" aria-label="Gerichte mit Abneigungen zeigen"></button></div>
+      <div class="sheet-foot row"><button class="btn" data-a="rfReset">Zurücksetzen</button><button class="btn primary grow" data-a="sheetZu">${treffer ? `${plural(treffer, "Gericht", "Gerichte")} anzeigen` : "Keine Treffer"}</button></div>`;
+  }
+  function zutatChipsHtml() {
+    const zaehler = {};
+    for (const r of window.REZEPTE) for (const [id] of r.z) if (!Z[id].vorrat) zaehler[id] = (zaehler[id] || 0) + 1;
+    const q = L.normal(ui.zutSuche.trim());
+    let ids = Object.keys(zaehler);
+    if (q) ids = ids.filter((id) => L.normal(Z[id].n).includes(q)).sort((a, b) => Z[a].n.localeCompare(Z[b].n));
+    else {
+      ids = ids.sort((a, b) => zaehler[b] - zaehler[a]).slice(0, 28);
+      ids = [...Object.keys(ui.rf.zut).filter((id) => !ids.includes(id)), ...ids];
+    }
+    if (!ids.length) return `<span class="small muted">Keine Zutat gefunden.</span>`;
+    return ids.map((id) => {
+      const v = ui.rf.zut[id];
+      return `<button class="chip ${v === 1 ? "on" : v === -1 ? "neg" : ""}" data-a="rfZut" data-id="${id}">${v === 1 ? "✓ " : v === -1 ? "✕ " : `${Z[id].e || ""} `}${esc(Z[id].n)}</button>`;
+    }).join("");
   }
 
   // ---------- Ansicht: Einkauf ----------
@@ -439,7 +639,7 @@
     if (!liste.kaufen.length && !liste.frei.length) {
       html += `<div class="card hero"><div class="big">🛒</div><h2>Deine Liste ist leer</h2>
         <p>Tippe oben auf „Ich brauche …“ und wähle Artikel aus. Mit einem Wochenplan kommen die Zutaten automatisch dazu.</p>
-        ${S.plan ? "" : `<button class="btn primary" data-a="planNeu">✨ Plan vorschlagen</button>`}</div>`;
+        ${S.plan ? "" : `<button class="btn primary" data-a="planDialog" data-modus="auto">✨ Plan vorschlagen</button>`}</div>`;
     } else {
       if (liste.kaufen.length) html += empfehlungKarte(liste, v);
 
@@ -662,6 +862,11 @@
   }
 
   // ---------- Ansicht: Einstellungen ----------
+  // Zutatengruppen, die sich mit einem Tipp ausschließen lassen
+  const GRUPPEN = [
+    { id: "fisch", n: "🐟 Kein Fisch & Meeresfrüchte", name: "Fisch", ids: Object.keys(Z).filter((id) => Z[id].fisch && !Z[id].sortiment) },
+    { id: "fleisch", n: "🥩 Kein Fleisch & Wurst", name: "Fleisch", ids: Object.keys(Z).filter((id) => Z[id].cat === "fleisch" && !Z[id].sortiment) },
+  ];
   function viewMehr() {
     const e = S.einstellungen;
     const zut = Object.entries(Z).filter(([, z]) => !z.vorrat && !z.sortiment).sort((a, b) => a[1].n.localeCompare(b[1].n));
@@ -669,19 +874,24 @@
     const vorrat = Object.entries(S.vorrat).filter(([id, m]) => Z[id] && m > 0);
     return `
     <div class="card"><h2>🗓️ Planung</h2>
-      <div class="field"><label for="f-start">Plan startet am</label><input id="f-start" class="input" type="date" value="${e.start}" data-change="start"></div>
-      <div class="field"><label for="f-tage">Tage pro Plan</label><select id="f-tage" class="input" data-change="tage">${[3, 4, 5, 6, 7, 8, 9, 10, 14].map((n) => `<option ${n === e.tage ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <p class="small muted" style="margin-top:0">Das ist die Vorauswahl, wenn du auf „Plan vorschlagen“ tippst. Im Planungsfenster passt du sie für jede Woche einzeln an.</p>
+      <div class="field"><label for="f-start">Plan beginnt</label><select id="f-start" class="input" style="max-width:58%" data-change="startModus">${[["heute", "heute"], ["morgen", "morgen"], ...["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"].map((t, i) => [String(i), `nächster ${t}`])].map(([v, n]) => `<option value="${v}" ${v === e.startModus ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="field"><label for="f-tage">Tage pro Plan</label><select id="f-tage" class="input" data-change="tage">${Array.from({ length: 14 }, (_, i) => i + 1).map((n) => `<option value="${n}" ${n === e.tage ? "selected" : ""}>${plural(n, "Tag", "Tage")}</option>`).join("")}</select></div>
       <div class="field"><span class="lbl">Portionen pro Kochen<span class="hint">2 = einmal frisch, einmal als Rest am nächsten Tag. Mehr Portionen = seltener kochen.</span></span>
         <span class="stepper"><button data-a="portionenStd" data-delta="-1" aria-label="weniger">−</button><span>${e.portionen}</span><button data-a="portionenStd" data-delta="1" aria-label="mehr">+</button></span></div>
-      <h3>Welche Mahlzeiten planen?</h3>
+      <h3>Welche Mahlzeiten normalerweise?</h3>
       <div class="daygrid"><span></span>${L.TAGE.map((t) => `<span class="h">${t}</span>`).join("")}
         ${L.SLOTS.map((s) => `<span class="l">${L.SLOT_ICON[s]} ${L.SLOT_NAME[s]}</span>${e.mahlzeiten[s].map((on, i) => `<button class="dtog ${on ? "on" : ""}" data-a="mahlzeit" data-s="${s}" data-i="${i}" aria-label="${L.SLOT_NAME[s]} ${L.TAGE[i]}">${on ? "✓" : ""}</button>`).join("")}`).join("")}
       </div>
-      <p class="tiny muted">Änderungen gelten ab dem nächsten „Plan vorschlagen“.</p>
+      <p class="tiny muted">Gilt als Vorauswahl je Wochentag, z. B. Frühstück nur am Wochenende.</p>
     </div>
 
     <div class="card"><h2>🚫 Mag ich nicht</h2>
-      <p class="small muted" style="margin-top:0">Diese Zutaten kommen nie auf die Einkaufsliste. Gerichte, in denen sie nur eine Nebenrolle spielen, bleiben im Angebot, nur eben ohne. Fisch ist gar nicht erst in der Sammlung.</p>
+      <p class="small muted" style="margin-top:0">Diese Zutaten kommen nie auf die Einkaufsliste. Gerichte, in denen sie die Hauptrolle spielen, werden nicht vorgeschlagen und unter Rezepte ausgeblendet. Spielen sie nur eine Nebenrolle, gibt es das Gericht eben ohne.</p>
+      <div class="chips" style="margin-bottom:10px">${GRUPPEN.map((g) => {
+        const alle = g.ids.every((id) => e.ausgeschlossen.includes(id));
+        return `<button class="chip ${alle ? "on" : ""}" data-a="ausschlussGruppe" data-id="${g.id}">${alle ? "✓" : "+"} ${g.n}</button>`;
+      }).join("")}</div>
       <div class="chips">${e.ausgeschlossen.map((id) => `<button class="chip on" data-a="ausschlussWeg" data-id="${id}">${esc(Z[id].n)} <span class="x">✕</span></button>`).join("") || `<span class="muted small">Noch nichts eingetragen</span>`}</div>
       <div class="row" style="margin-top:10px"><select class="input grow" data-change="ausschlussNeu" aria-label="Zutat ausschließen"><option value="">+ Zutat hinzufügen …</option>
         ${zut.filter(([id]) => !e.ausgeschlossen.includes(id)).map(([id, z]) => `<option value="${id}">${esc(z.n)}</option>`).join("")}</select></div>
@@ -735,9 +945,11 @@
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
     const alt = root.querySelector(".sheet");
     const scroll = !neu && alt ? alt.scrollTop : 0;
-    const inhalt = { slot: sheetSlot, rezept: sheetRezept, einplanen: sheetEinplanen, bestaetigen: sheetBestaetigen, hinzufuegen: sheetHinzufuegen, artikel: sheetArtikel }[ui.sheet.typ]();
+    const inhalt = { slot: sheetSlot, rezept: sheetRezept, einplanen: sheetEinplanen, bestaetigen: sheetBestaetigen, hinzufuegen: sheetHinzufuegen, artikel: sheetArtikel, planer: sheetPlaner, filter: sheetFilter }[ui.sheet.typ]();
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
-    root.innerHTML = `<div class="sheet-bg" data-a="sheetZu"></div><div class="sheet" role="dialog" aria-modal="true">${inhalt}</div>`;
+    // Animation nur beim Öffnen, nicht bei jedem Neuzeichnen
+    const still = !neu && alt ? " still" : "";
+    root.innerHTML = `<div class="sheet-bg${still}" data-a="sheetZu"></div><div class="sheet${still}" role="dialog" aria-modal="true">${inhalt}</div>`;
     root.querySelector(".sheet").scrollTop = scroll;
     document.body.style.overflow = "hidden";
   }
@@ -849,6 +1061,7 @@
         }).join("")}
       </ul>
       <p class="tiny muted" style="margin:8px 0 0">${k ? "Schalter aus = Zutat weglassen, sie verschwindet von der Einkaufsliste." : "Zutaten weglassen kannst du, sobald das Gericht im Plan ist. Dauerhafte Abneigungen stellst du unter Einstellungen ein."}</p>
+      ${preisZeile(L.rezeptPreis(r, S, portionen, k?.weg || []), portionen)}
     </div>
     ${naehrwertKarte(L.naehrwerte(r, portionen, k?.weg || [], aus), !!k?.weg?.length || zs.some((z) => z.grund === "mag ich nicht"))}
     <div class="card"><h2>Zubereitung</h2><ol class="steps">${r.st.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
@@ -871,6 +1084,12 @@
       ${S.plan ? `<button class="btn" data-a="einplanen" data-id="${r.id}">🗓️ In den Plan</button>` : ""}
     </div>`;
     return html;
+  }
+
+  function preisZeile(pr, portionen) {
+    return `<div class="preiszeile ${pr.angebot ? "offer" : ""}"><span class="grow"><b>💶 ca. ${L.euro(pr.preis)}</b> für ${plural(portionen, "Portion", "Portionen")}
+        <span class="tiny muted" style="display:block">${portionen > 1 ? `${L.euro(pr.proPortion)} pro Portion · ` : ""}Anteil der Packungen, ohne Basis-Vorrat</span></span>
+      ${pr.angebot ? `<span class="tiny" style="text-align:right">🏷️ dank Angeboten<br><s class="muted">${L.euro(pr.normal)}</s></span>` : ""}</div>`;
   }
 
   function naehrwertKarte(n, angepasst) {
@@ -934,12 +1153,43 @@
       render();
       window.scrollTo(0, 0);
     },
-    planNeu: () => {
-      const vorhanden = !!S.plan;
-      aendern(() => { if (vorhanden) S.zuletzt = [...new Set(L.kochListe(S.plan).map((k) => k.rid).filter(Boolean))]; neuPlanen(); }, vorhanden ? "Neuer Vorschlag erstellt" : "Plan erstellt ✨");
-      if (ui.tab !== "plan") A.tab({ id: "plan" });
+    // Neu würfeln mit demselben Zeitraum und denselben Mahlzeiten
+    planNeu: () => aendern(() => neuPlanen(planAuswahl(S.plan)), "Neuer Vorschlag erstellt"),
+    planDialog: (ds) => planerOeffnen(ds.modus, ds.quelle === "plan" && S.plan ? planAuswahl(S.plan) : null),
+    planerDatum: (ds) => {
+      const P = ui.planer;
+      if (P.phase === "ende" && ds.iso >= P.start) {
+        if (tageZwischen(P.start, ds.iso) > 13) { P.ende = L.plusTage(P.start, 13); toast("Höchstens 14 Tage auf einmal"); }
+        else P.ende = ds.iso;
+        P.phase = "start";
+      } else {
+        P.start = P.ende = ds.iso;
+        P.phase = "ende";
+      }
+      renderSheet();
     },
-    planLeer: () => aendern(() => { S.plan = L.leererPlan(S); aufraeumen(); S.abgehakt = {}; }, "Leerer Plan – tippe auf eine Mahlzeit"),
+    planerPreset: (ds) => { Object.assign(ui.planer, { start: ds.von, ende: ds.bis, phase: "start" }); renderSheet(); },
+    planerSlot: (ds) => { const w = planerTag(ds.iso); w[ds.s] = !w[ds.s]; renderSheet(); },
+    planerSpalte: (ds) => {
+      const tage = planerTage().filter((iso) => !L.istVorbei(iso, ds.s));
+      const an = !tage.every((iso) => planerTag(iso)[ds.s]);
+      for (const iso of tage) planerTag(iso)[ds.s] = an;
+      renderSheet();
+    },
+    planerPortion: (ds) => { ui.planer.portionen = Math.min(6, Math.max(1, ui.planer.portionen + Number(ds.delta))); renderSheet(); },
+    planerLos: () => {
+      const a = planerAuswahl();
+      if (!a.keys.length) { toast("Wähle mindestens eine Mahlzeit"); return; }
+      const auto = ui.planer.modus === "auto";
+      ui.sheet = null;
+      ui.tab = "plan";
+      try { sessionStorage.setItem("restlos-tab", "plan"); } catch (e) { /* egal */ }
+      aendern(() => {
+        if (auto) neuPlanen(a);
+        else { S.plan = L.leererPlan(S, a); aufraeumen(); S.abgehakt = {}; }
+      }, auto ? "Plan erstellt ✨" : "Leerer Plan: tippe auf eine Mahlzeit");
+      window.scrollTo(0, 0);
+    },
     planFuellen: () => aendern(() => L.fuelle(S.plan, S, true), "Lücken gefüllt"),
     planLoeschen: () => frage("Plan löschen?", "Der aktuelle Wochenplan und die Einkaufsliste werden verworfen.", "Löschen", () => { aufraeumen(); S.plan = null; S.abgehakt = {}; }, true),
     wocheAbschliessen: () => frage("Woche abschließen?", "Haltbare und einfrierbare Reste werden in deinen Vorrat übernommen, übrige Portionen in den Tiefkühler. Danach kannst du die nächste Woche planen.", "Abschließen", wocheAbschliessen),
@@ -979,9 +1229,18 @@
     },
     einplanen: (ds) => oeffneSheet({ typ: "einplanen", rid: ds.id }),
     einplanenHier: (ds) => { aendern(() => setzeRezept(ds.key, ds.id), "Eingeplant"); schliesseSheet(); },
-    filter: (ds) => { ui.filter = ds.id; render(); },
-    zutatFilterWeg: () => { ui.zutatFilter = null; render(); },
-    zutatRezepte: (ds) => { ui.zutatFilter = ds.id; ui.filter = "alle"; ui.suche = ""; A.tab({ id: "rezepte" }); },
+    filterSheet: () => { ui.zutSuche = ""; oeffneSheet({ typ: "filter" }); },
+    rf: (ds) => { rfSetzen(ds.k, ds.k === "zeit" || ds.k === "preis" ? Number(ds.v) : ds.k === "abneigung" ? true : ds.v); render(); },
+    rfSchnell: (ds) => { const [, k, v] = SCHNELL[Number(ds.i)]; rfSetzen(k, v); render(); },
+    rfZut: (ds) => {
+      const z = ui.rf.zut;
+      const neu = ds.weg ? 0 : z[ds.id] === 1 ? -1 : z[ds.id] === -1 ? 0 : 1;
+      if (neu) z[ds.id] = neu; else delete z[ds.id];
+      render();
+    },
+    rfReset: () => { ui.rf = RF0(); ui.suche = ""; render(); },
+    startWunsch: () => { ui.rf = RF0(); ui.rf.meine = "wunsch"; ui.suche = ""; A.tab({ id: "rezepte" }); },
+    zutatRezepte: (ds) => { ui.rf = RF0(); ui.rf.zut = { [ds.id]: 1 }; ui.suche = ""; A.tab({ id: "rezepte" }); },
     abhaken: (ds) => aendern(() => { if (S.abgehakt[ds.id]) delete S.abgehakt[ds.id]; else S.abgehakt[ds.id] = true; }),
     abhakenReset: () => aendern(() => { S.abgehakt = {}; }),
     habeIch: (ds) => {
@@ -1044,6 +1303,13 @@
     },
     portionenStd: (ds) => aendern(() => { S.einstellungen.portionen = Math.min(6, Math.max(1, S.einstellungen.portionen + Number(ds.delta))); }),
     mahlzeit: (ds) => aendern(() => { const a = S.einstellungen.mahlzeiten[ds.s]; a[Number(ds.i)] = !a[Number(ds.i)]; }),
+    ausschlussGruppe: (ds) => {
+      const g = GRUPPEN.find((x) => x.id === ds.id);
+      const e = S.einstellungen;
+      const alle = g.ids.every((id) => e.ausgeschlossen.includes(id));
+      aendern(() => { e.ausgeschlossen = alle ? e.ausgeschlossen.filter((id) => !g.ids.includes(id)) : [...new Set([...e.ausgeschlossen, ...g.ids])]; },
+        alle ? `${g.name} wird wieder vorgeschlagen` : `Gerichte mit ${g.name} werden nicht mehr vorgeschlagen`);
+    },
     ausschlussWeg: (ds) => aendern(() => { S.einstellungen.ausgeschlossen = S.einstellungen.ausgeschlossen.filter((x) => x !== ds.id); }),
     vorratToggle: (ds) => aendern(() => {
       const f = S.einstellungen.vorratFehlt;
@@ -1074,7 +1340,7 @@
   };
 
   const C = {
-    start: (v) => { if (v) S.einstellungen.start = v; },
+    startModus: (v) => { S.einstellungen.startModus = v; },
     tage: (v) => { S.einstellungen.tage = Number(v); },
     ausschlussNeu: (v) => { if (v && !S.einstellungen.ausgeschlossen.includes(v)) S.einstellungen.ausgeschlossen.push(v); },
     kombiAb: (v) => { S.einstellungen.kombiAb = Number(v); },
@@ -1099,7 +1365,7 @@
         try {
           const d = JSON.parse(t);
           if (!d.einstellungen) throw new Error();
-          S = { ...standard(), ...d };
+          S = zusammenfuehren(d);
           speichern(); anwendenTheme(); render(); toast("Wiederhergestellt");
         } catch (err) { toast("Datei konnte nicht gelesen werden"); }
       });
@@ -1113,6 +1379,9 @@
     if (el.dataset.input === "suche") {
       ui.suche = el.value;
       document.getElementById("rlist").innerHTML = rezeptListeHtml();
+    } else if (el.dataset.input === "zutSuche") {
+      ui.zutSuche = el.value;
+      document.getElementById("zutchips").innerHTML = zutatChipsHtml();
     } else if (el.dataset.input === "addSuche") {
       ui.addSuche = el.value;
       document.getElementById("addgrid").innerHTML = addGridHtml();

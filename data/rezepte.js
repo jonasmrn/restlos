@@ -584,6 +584,335 @@ window.REZEPTE = [
     ],
   },
 
+  // =================== FISCH & MEERESFRÜCHTE ===================
+  {
+    id: "lachs_ofen", n: "Ofenlachs mit Zitronen-Kartoffeln & Brokkoli", e: "🐟", m: ["mittag", "abend"], s: 2, t: 40, geraet: "ofen",
+    tags: ["fisch", "ofen", "blech", "proteinreich"],
+    z: [["lachs", 250], ["kartoffeln", 500], ["brokkoli", 0.5], ["zitrone", 1], ["knoblauch", 2], ["petersilie", 0.5, "opt"], ["oel", 3], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Lachs am Vorabend im Kühlschrank auftauen lassen (oder im verschlossenen Beutel 30 Min. in kaltes Wasser legen).",
+      "Ofen auf 200 °C vorheizen. Kartoffeln vierteln, mit 2 EL Öl, gehacktem Knoblauch und Salz auf dem Blech verteilen und 20 Min. backen.",
+      "Brokkoli in Röschen teilen und zu den Kartoffeln geben. Lachs dazulegen, salzen, pfeffern, mit Zitronenscheiben belegen und mit dem restlichen Öl beträufeln.",
+      "Weitere 12–15 Min. backen, bis der Lachs innen gerade nicht mehr glasig ist. Mit Petersilie und Zitronensaft servieren.",
+    ],
+  },
+  {
+    id: "lachs_pasta", n: "Lachs-Sahne-Pasta mit Spinat", e: "🍝", m: ["mittag", "abend"], s: 2, t: 25,
+    tags: ["fisch", "pasta", "italienisch", "cremig", "schnell"],
+    z: [["lachs", 250], ["penne", 200], ["sahne", 200], ["spinat", 100], ["zitrone", 0.5], ["knoblauch", 1], ["parmesan", 20, "opt"], ["oel", 1], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Lachs antauen lassen und in Würfel schneiden. Nudeln in Salzwasser bissfest kochen.",
+      "Knoblauch in Öl kurz anschwitzen, Sahne angießen und 3 Min. einköcheln lassen.",
+      "Lachswürfel in die Sauce geben und 3–4 Min. gar ziehen lassen. Spinat unterheben, bis er zusammenfällt.",
+      "Mit Zitronensaft, Salz und Pfeffer abschmecken, mit den Nudeln mischen und mit Parmesan servieren.",
+    ],
+  },
+  {
+    id: "teriyaki_lachs", n: "Teriyaki-Lachs-Bowl", e: "🍣", m: ["mittag", "abend"], s: 2, t: 25,
+    tags: ["fisch", "asiatisch", "bowl", "schnell"],
+    z: [["lachs", 250], ["reis", 150], ["gurke", 0.5], ["avocado", 1, "opt"], ["fruehlingszwiebel", 2], ["sojasauce", 40], ["honig", 2], ["ingwer", 10], ["knoblauch", 1], ["oel", 1]],
+    st: [
+      "Reis kochen. Für die Sauce Sojasauce, Honig, geriebenen Ingwer und Knoblauch verrühren.",
+      "Aufgetauten Lachs in Würfel schneiden und in Öl rundum 3 Min. anbraten.",
+      "Sauce dazugießen und unter Schwenken einkochen lassen, bis sie glänzt.",
+      "Reis in Schalen verteilen, Lachs, Gurkenscheiben, Avocado und Frühlingszwiebeln darauf anrichten.",
+    ],
+    tipp: "Die Bowl schmeckt am nächsten Tag auch kalt, Avocado dann erst frisch dazugeben.",
+  },
+  {
+    id: "fischstaebchen", n: "Fischstäbchen mit Kartoffelpüree & Erbsen", e: "🐟", m: ["mittag", "abend"], s: 2, t: 30, geraet: "airfryer", aufw: false,
+    tags: ["fisch", "klassiker", "deutsch", "airfryer"],
+    z: [["fischstaebchen", 10], ["kartoffeln", 600], ["milch", 150], ["butter", 30], ["tk_erbsen", 200], ["zitrone", 0.5, "opt"], ["salz", 2]],
+    st: [
+      "Kartoffeln schälen, würfeln und in Salzwasser ca. 20 Min. weich kochen.",
+      "Fischstäbchen im Airfryer bei 200 °C ca. 10 Min. knusprig backen, nach der Hälfte wenden (oder in der Pfanne braten).",
+      "Erbsen in wenig Salzwasser 4 Min. garen und mit etwas Butter schwenken.",
+      "Kartoffeln abgießen, mit warmer Milch und Butter zu Püree stampfen, salzen. Mit Zitronenspalten servieren.",
+    ],
+  },
+  {
+    id: "thunfisch_pasta", n: "Pasta mit Thunfisch-Tomatensauce", e: "🍝", m: ["mittag", "abend"], s: 2, t: 20,
+    tags: ["fisch", "pasta", "italienisch", "schnell"],
+    z: [["thunfisch", 150], ["spaghetti", 200], ["gehackte_tomaten", 400], ["zwiebel", 1], ["knoblauch", 2], ["petersilie", 0.5, "opt"], ["chiliflocken", 0.5], ["oel", 2], ["salz", 2]],
+    st: [
+      "Spaghetti in Salzwasser bissfest kochen.",
+      "Zwiebel und Knoblauch fein würfeln und in Öl glasig dünsten, Chiliflocken kurz mitrösten.",
+      "Gehackte Tomaten dazugeben und 10 Min. köcheln lassen.",
+      "Abgetropften Thunfisch zerpflücken und unterheben, nur noch erwärmen. Mit Salz und Petersilie abschmecken und mit den Nudeln mischen.",
+    ],
+  },
+  {
+    id: "thunfisch_wraps", n: "Thunfisch-Wraps mit Mais", e: "🌯", m: ["mittag"], s: 2, t: 10, aufw: false,
+    tags: ["fisch", "wraps", "mitnehmen", "schnell"],
+    z: [["thunfisch", 150], ["wraps", 4], ["frischkaese", 100], ["mais", 70], ["romanasalat", 0.5], ["paprika", 0.5], ["zitrone", 0.5], ["pfeffer", 1]],
+    st: [
+      "Thunfisch abtropfen lassen und mit Frischkäse, Mais, Zitronensaft und Pfeffer verrühren.",
+      "Paprika in feine Streifen, Salat in Streifen schneiden.",
+      "Creme auf die Wraps streichen, Gemüse darauf verteilen und fest einrollen.",
+    ],
+    tipp: "Für unterwegs in Alufolie wickeln, dann hält der Wrap seine Form.",
+  },
+  {
+    id: "gambas_pasta", n: "Knoblauch-Garnelen-Spaghetti", e: "🍤", m: ["mittag", "abend"], s: 2, t: 20, aufw: false,
+    tags: ["fisch", "pasta", "italienisch", "schnell"],
+    z: [["garnelen", 225], ["spaghetti", 200], ["kirschtomaten", 250], ["knoblauch", 3], ["petersilie", 0.5], ["zitrone", 0.5], ["chiliflocken", 0.5], ["oel", 3], ["salz", 2]],
+    st: [
+      "Garnelen auftauen lassen und trocken tupfen. Spaghetti in Salzwasser kochen, eine Tasse Nudelwasser aufheben.",
+      "Knoblauch in Scheiben schneiden und mit Chiliflocken in Öl sanft anbraten, halbierte Kirschtomaten 3 Min. mitbraten.",
+      "Garnelen dazugeben und 2–3 Min. braten, bis sie rosa sind.",
+      "Spaghetti mit etwas Nudelwasser in die Pfanne geben, mit Zitronensaft, Salz und Petersilie abschmecken.",
+    ],
+  },
+  {
+    id: "garnelen_curry", n: "Garnelen-Kokos-Curry", e: "🥥", m: ["mittag", "abend"], s: 2, t: 25,
+    tags: ["fisch", "asiatisch", "curry", "schnell"],
+    z: [["garnelen", 225], ["kokosmilch", 400], ["currypaste", 30], ["paprika", 1], ["zucchini", 1], ["reis", 150], ["limette", 1], ["sojasauce", 10], ["oel", 1]],
+    st: [
+      "Reis kochen. Paprika und Zucchini in mundgerechte Stücke schneiden.",
+      "Currypaste in Öl 1 Min. anrösten, mit Kokosmilch ablöschen.",
+      "Gemüse dazugeben und 8 Min. köcheln lassen.",
+      "Aufgetaute Garnelen hineingeben und 3 Min. gar ziehen lassen. Mit Sojasauce und Limettensaft abschmecken.",
+    ],
+    tipp: "Übrige Kokosmilch und Currypaste passen ins Hähnchen-Curry oder ins Linsen-Dal.",
+  },
+  {
+    id: "seelachs_kruste", n: "Seelachs mit Senfkruste & Gurkensalat", e: "🐟", m: ["mittag", "abend"], s: 2, t: 35, geraet: "ofen",
+    tags: ["fisch", "ofen", "deutsch", "proteinreich"],
+    z: [["seelachs", 300], ["kartoffeln", 500], ["toastbrot", 40], ["butter", 30], ["senf", 2], ["petersilie", 0.5, "opt"], ["gurke", 1], ["joghurt", 100], ["essig", 1], ["zucker", 5], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Kartoffeln in Salzwasser 20 Min. kochen. Ofen auf 200 °C vorheizen.",
+      "Toast fein zerbröseln und mit weicher Butter, Senf und gehackter Petersilie verkneten.",
+      "Angetauten Seelachs in eine Form legen, salzen, die Kruste darauf drücken und 15–18 Min. backen.",
+      "Gurke in dünne Scheiben hobeln und mit Joghurt, Essig, Zucker, Salz und Pfeffer anmachen.",
+    ],
+  },
+  {
+    id: "fisch_tacos", n: "Fisch-Tacos mit Limetten-Joghurt", e: "🌮", m: ["mittag", "abend"], s: 2, t: 25, aufw: false,
+    tags: ["fisch", "mexikanisch", "wraps"],
+    z: [["seelachs", 250], ["wraps", 4], ["romanasalat", 1], ["limette", 1], ["joghurt", 100], ["avocado", 1, "opt"], ["mehl", 20], ["paprikapulver", 1], ["kreuzkuemmel", 0.5], ["oel", 2], ["salz", 1]],
+    st: [
+      "Seelachs auftauen lassen, trocken tupfen und in Streifen schneiden.",
+      "Mehl mit Paprikapulver, Kreuzkümmel und Salz mischen, Fisch darin wenden und in Öl 2–3 Min. pro Seite knusprig braten.",
+      "Joghurt mit Limettensaft und einer Prise Salz verrühren. Salat in feine Streifen schneiden.",
+      "Wraps kurz in der trockenen Pfanne erwärmen, mit Salat, Fisch, Avocado und Limetten-Joghurt füllen.",
+    ],
+  },
+
+  // =================== NOCH MEHR FLEISCH ===================
+  {
+    id: "tikka_masala", n: "Chicken Tikka Masala", e: "🍛", m: ["mittag", "abend"], s: 2, t: 40, fz: true,
+    tags: ["indisch", "curry", "gefluegel", "fleisch"],
+    z: [["haehnchen", 300], ["joghurt", 100], ["passierte_tomaten", 250], ["sahne", 100], ["zwiebel", 1], ["knoblauch", 2], ["ingwer", 10], ["currypulver", 2], ["kreuzkuemmel", 1], ["paprikapulver", 1], ["reis", 150], ["oel", 1], ["salz", 2]],
+    st: [
+      "Hähnchen würfeln und mit Joghurt, 1 TL Currypulver und Salz mindestens 10 Min. marinieren. Reis kochen.",
+      "Hähnchen in Öl rundum scharf anbraten und herausnehmen.",
+      "Zwiebel, Knoblauch und Ingwer fein hacken und in derselben Pfanne anschwitzen, restliche Gewürze 1 Min. mitrösten.",
+      "Passierte Tomaten und Sahne dazu, 10 Min. köcheln, dann das Hähnchen zurück in die Sauce geben und 5 Min. ziehen lassen.",
+    ],
+  },
+  {
+    id: "fajitas", n: "Hähnchen-Fajitas", e: "🌮", m: ["mittag", "abend"], s: 2, t: 25,
+    tags: ["mexikanisch", "wraps", "gefluegel", "fleisch", "schnell"],
+    z: [["haehnchen", 300], ["paprika", 2], ["zwiebel", 1], ["wraps", 4], ["schmand", 100], ["limette", 1], ["avocado", 1, "opt"], ["paprikapulver", 2], ["kreuzkuemmel", 1], ["oel", 2], ["salz", 1]],
+    st: [
+      "Hähnchen in Streifen schneiden und mit Paprikapulver, Kreuzkümmel, Salz und dem Saft einer halben Limette mischen.",
+      "Paprika und Zwiebel in Streifen schneiden.",
+      "Hähnchen in Öl scharf anbraten, Gemüse dazugeben und 5 Min. weiterbraten, es soll noch Biss haben.",
+      "Wraps erwärmen und mit Schmand, Hähnchen-Gemüse und Avocado füllen. Restliche Limette dazu reichen.",
+    ],
+  },
+  {
+    id: "koettbullar", n: "Köttbullar mit Rahmsauce & Kartoffeln", e: "🧆", m: ["mittag", "abend"], s: 2, t: 40, fz: true,
+    tags: ["skandinavisch", "fleisch", "klassiker"],
+    z: [["hack", 250], ["eier", 1], ["toastbrot", 30], ["zwiebel", 1], ["sahne", 200], ["bruehe", 1], ["kartoffeln", 500], ["senf", 1], ["butter", 10], ["oel", 1], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Kartoffeln in Salzwasser 20 Min. kochen.",
+      "Toast einweichen und ausdrücken, mit Hack, Ei, sehr fein gewürfelter Zwiebel, Salz und Pfeffer verkneten und kleine Bällchen formen.",
+      "Bällchen in Öl und Butter rundum 8 Min. braten und herausnehmen.",
+      "Bratensatz mit 100 ml Wasser, Brühe und Sahne ablöschen, Senf einrühren und 3 Min. einkochen. Bällchen in der Sauce erwärmen.",
+    ],
+  },
+  {
+    id: "kaese_lauch_suppe", n: "Käse-Lauch-Suppe mit Hack", e: "🥣", m: ["mittag", "abend"], s: 2, t: 35, fz: true,
+    tags: ["deutsch", "suppe", "fleisch", "klassiker"],
+    z: [["hack", 250], ["lauch", 1], ["zwiebel", 1], ["frischkaese", 150], ["bruehe", 3], ["sahne", 100, "opt"], ["baguette", 1, "opt"], ["oel", 1], ["pfeffer", 1]],
+    st: [
+      "Hack in einem Topf in Öl krümelig anbraten, gewürfelte Zwiebel mitbraten.",
+      "Lauch in Ringe schneiden, gründlich waschen und 3 Min. mitdünsten.",
+      "Mit 700 ml Wasser und der Brühe auffüllen und 15 Min. köcheln lassen.",
+      "Frischkäse (und Sahne) einrühren, bis er geschmolzen ist, mit Pfeffer abschmecken. Dazu aufgebackenes Baguette.",
+    ],
+  },
+  {
+    id: "zucchini_hack", n: "Zucchini-Hack-Pfanne mit Feta & Reis", e: "🥒", m: ["mittag", "abend"], s: 2, t: 30,
+    tags: ["griechisch", "fleisch"],
+    z: [["hack", 250], ["zucchini", 1], ["paprika", 1], ["zwiebel", 1], ["knoblauch", 1], ["tomatenmark", 20], ["feta", 100], ["reis", 150], ["oregano", 1], ["oel", 1], ["salz", 2]],
+    st: [
+      "Reis kochen. Zucchini, Paprika und Zwiebel würfeln.",
+      "Hack in Öl kräftig anbraten, Zwiebel und Knoblauch dazu.",
+      "Zucchini und Paprika 5 Min. mitbraten, Tomatenmark und Oregano unterrühren, mit einem Schuss Wasser ablöschen.",
+      "Mit Salz abschmecken und mit Reis und zerbröseltem Feta servieren.",
+    ],
+  },
+  {
+    id: "honig_senf_haehnchen", n: "Honig-Senf-Hähnchen mit Brokkoli & Reis", e: "🍯", m: ["mittag", "abend"], s: 2, t: 25,
+    tags: ["gefluegel", "fleisch", "schnell"],
+    z: [["haehnchen", 300], ["honig", 2], ["senf", 3], ["sojasauce", 20], ["brokkoli", 0.5], ["reis", 150], ["knoblauch", 1], ["oel", 1], ["salz", 1]],
+    st: [
+      "Reis kochen. Honig, Senf, Sojasauce und gepressten Knoblauch verrühren.",
+      "Hähnchen in Streifen schneiden und in Öl goldbraun braten.",
+      "Brokkoliröschen mit 3 EL Wasser dazugeben, Deckel drauf und 4 Min. dämpfen.",
+      "Sauce dazugießen und alles glasieren, bis die Sauce dicklich ist. Mit dem Reis servieren.",
+    ],
+  },
+  {
+    id: "linseneintopf", n: "Linseneintopf mit Bratwurst", e: "🥣", m: ["mittag", "abend"], s: 2, t: 40, fz: true,
+    tags: ["deutsch", "eintopf", "suppe", "fleisch"],
+    z: [["rote_linsen", 150], ["bratwurst", 2], ["kartoffeln", 300], ["karotte", 2], ["lauch", 0.5], ["zwiebel", 1], ["bruehe", 3], ["essig", 1], ["oel", 1], ["salz", 1], ["pfeffer", 1]],
+    st: [
+      "Zwiebel, Karotten, Lauch und Kartoffeln klein würfeln.",
+      "Zwiebel in Öl anschwitzen, restliches Gemüse und Linsen dazugeben.",
+      "Mit 900 ml Wasser und Brühe auffüllen und 20 Min. köcheln lassen.",
+      "Bratwurst in Scheiben schneiden, in der Pfanne anbraten und in den Eintopf geben. Mit Essig, Salz und Pfeffer abschmecken.",
+    ],
+  },
+  {
+    id: "bauernfruehstueck", n: "Bauernfrühstück", e: "🍳", m: ["mittag", "abend"], s: 2, t: 30, aufw: false,
+    tags: ["deutsch", "eier", "resteverwertung", "fleisch"],
+    z: [["kartoffeln", 500], ["eier", 4], ["speck", 100], ["zwiebel", 1], ["fruehlingszwiebel", 2, "opt"], ["oel", 2], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Kartoffeln mit Schale 20 Min. kochen, pellen und in Scheiben schneiden (oder Pellkartoffeln vom Vortag nehmen).",
+      "Speck und Zwiebelwürfel in Öl anbraten, Kartoffeln dazugeben und goldbraun braten.",
+      "Eier mit Salz und Pfeffer verquirlen, über die Kartoffeln gießen und bei mittlerer Hitze stocken lassen.",
+      "Mit Frühlingszwiebeln bestreuen und direkt aus der Pfanne servieren.",
+    ],
+  },
+  {
+    id: "schinken_erbsen_pasta", n: "Pasta mit Schinken, Erbsen & Sahne", e: "🍝", m: ["mittag", "abend"], s: 2, t: 20,
+    tags: ["pasta", "italienisch", "fleisch", "schnell"],
+    z: [["penne", 200], ["kochschinken", 100], ["tk_erbsen", 150], ["sahne", 200], ["zwiebel", 0.5], ["parmesan", 20, "opt"], ["butter", 10], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Nudeln in Salzwasser kochen, in den letzten 3 Min. die Erbsen mitgaren.",
+      "Zwiebel fein würfeln und in Butter anschwitzen, Schinkenstreifen kurz mitbraten.",
+      "Sahne angießen und 3 Min. einköcheln lassen, pfeffern.",
+      "Nudeln und Erbsen abgießen, in der Sauce schwenken und mit Parmesan servieren.",
+    ],
+  },
+
+  // =================== NOCH MEHR VEGETARISCH ===================
+  {
+    id: "kuerbissuppe", n: "Kürbissuppe mit Ingwer & Kokos", e: "🎃", m: ["mittag", "abend"], s: 2, t: 35, fz: true,
+    tags: ["suppe", "vegan", "vegetarisch", "herbst"],
+    z: [["kuerbis", 0.5], ["karotte", 1], ["zwiebel", 1], ["ingwer", 10], ["kokosmilch", 200], ["bruehe", 3], ["baguette", 1, "opt"], ["oel", 1], ["salz", 1], ["pfeffer", 1]],
+    st: [
+      "Kürbis entkernen und mit Schale würfeln (Hokkaido muss nicht geschält werden). Karotte, Zwiebel und Ingwer klein schneiden.",
+      "Alles in Öl 3 Min. anschwitzen, mit 600 ml Wasser und Brühe auffüllen.",
+      "20 Min. köcheln lassen, bis der Kürbis weich ist.",
+      "Kokosmilch dazugeben, fein pürieren und mit Salz und Pfeffer abschmecken. Dazu Baguette.",
+    ],
+    tipp: "Die andere Kürbishälfte passt perfekt in den Ofenkürbis mit Feta.",
+  },
+  {
+    id: "ofenkuerbis_feta", n: "Ofenkürbis mit Feta & Couscous", e: "🎃", m: ["mittag", "abend"], s: 2, t: 35, geraet: "ofen",
+    tags: ["ofen", "blech", "vegetarisch", "orientalisch", "herbst"],
+    z: [["kuerbis", 0.5], ["zwiebel", 1], ["feta", 100], ["couscous", 120], ["spinat", 60], ["honig", 1], ["kreuzkuemmel", 1], ["oel", 3], ["salz", 2], ["pfeffer", 1]],
+    st: [
+      "Ofen auf 200 °C vorheizen. Kürbis in Spalten, Zwiebel in Achtel schneiden.",
+      "Mit 2 EL Öl, Kreuzkümmel, Salz und Pfeffer mischen und 25 Min. backen, in den letzten 5 Min. mit Honig beträufeln.",
+      "Couscous mit der gleichen Menge kochendem Salzwasser übergießen, 5 Min. quellen lassen und mit restlichem Öl auflockern.",
+      "Spinat unter den warmen Couscous heben, Ofenkürbis darauf anrichten und Feta darüberbröseln.",
+    ],
+  },
+  {
+    id: "kaesespaetzle", n: "Käsespätzle mit Röstzwiebeln", e: "🧀", m: ["mittag", "abend"], s: 2, t: 25,
+    tags: ["deutsch", "vegetarisch", "klassiker", "schnell"],
+    z: [["spaetzle_frisch", 500], ["gouda", 120], ["zwiebel", 2], ["butter", 30], ["fruehlingszwiebel", 2, "opt"], ["salz", 1], ["pfeffer", 1]],
+    st: [
+      "Zwiebeln in dünne Ringe schneiden und in der Hälfte der Butter langsam goldbraun rösten, herausnehmen.",
+      "Restliche Butter in die Pfanne geben, Spätzle darin 5 Min. anbraten.",
+      "Käse unterheben und bei kleiner Hitze schmelzen lassen, pfeffern.",
+      "Mit Röstzwiebeln und Frühlingszwiebeln bestreut servieren.",
+    ],
+  },
+  {
+    id: "frittata", n: "Gemüse-Frittata mit Feta", e: "🍳", m: ["fruehstueck", "mittag", "abend"], s: 2, t: 25,
+    tags: ["eier", "vegetarisch", "resteverwertung", "schnell", "mitnehmen"],
+    z: [["eier", 5], ["zucchini", 0.5], ["paprika", 1], ["feta", 80], ["fruehlingszwiebel", 2], ["milch", 50], ["oel", 1], ["salz", 1], ["pfeffer", 1]],
+    st: [
+      "Zucchini und Paprika klein würfeln, Frühlingszwiebeln in Ringe schneiden.",
+      "Gemüse in einer ofenfesten Pfanne in Öl 5 Min. anbraten.",
+      "Eier mit Milch, Salz und Pfeffer verquirlen, über das Gemüse gießen und Feta darüberbröseln.",
+      "Mit Deckel bei kleiner Hitze 10 Min. stocken lassen (oder 10 Min. bei 200 °C in den Ofen). In Stücke schneiden.",
+    ],
+    tipp: "Fast jedes Gemüse vom Vortag passt hinein. Kalt ein gutes Mittagessen zum Mitnehmen.",
+  },
+  {
+    id: "linsen_bolognese", n: "Linsen-Bolognese", e: "🍝", m: ["mittag", "abend"], s: 2, t: 35, fz: true,
+    tags: ["italienisch", "pasta", "vegan", "vegetarisch"],
+    z: [["rote_linsen", 100], ["karotte", 1], ["zwiebel", 1], ["knoblauch", 2], ["passierte_tomaten", 500], ["tomatenmark", 30], ["spaghetti", 200], ["oregano", 1], ["zucker", 5], ["oel", 2], ["salz", 2]],
+    st: [
+      "Zwiebel, Karotte und Knoblauch sehr fein würfeln und in Öl 5 Min. anschwitzen.",
+      "Tomatenmark kurz mitrösten, Linsen, passierte Tomaten und 200 ml Wasser dazugeben.",
+      "Mit Oregano, Zucker und Salz würzen und 15–20 Min. köcheln, bis die Linsen weich sind.",
+      "Spaghetti bissfest kochen und mit der Sauce servieren.",
+    ],
+  },
+  {
+    id: "chili_sin_carne", n: "Chili sin Carne mit Süßkartoffel", e: "🌶️", m: ["mittag", "abend"], s: 2, t: 40, fz: true,
+    tags: ["mexikanisch", "eintopf", "vegan", "vegetarisch", "scharf"],
+    z: [["suesskartoffel", 250], ["kidneybohnen", 250], ["mais", 140], ["paprika", 1], ["zwiebel", 1], ["knoblauch", 2], ["gehackte_tomaten", 400], ["tomatenmark", 20], ["reis", 150], ["kreuzkuemmel", 1], ["paprikapulver", 1], ["chiliflocken", 0.5], ["oel", 1], ["salz", 2]],
+    st: [
+      "Reis kochen. Süßkartoffel in kleine Würfel, Zwiebel, Knoblauch und Paprika klein schneiden.",
+      "Zwiebel und Knoblauch in Öl anschwitzen, Gewürze und Tomatenmark 1 Min. mitrösten.",
+      "Süßkartoffel, Paprika, Tomaten und 150 ml Wasser dazugeben und 15 Min. köcheln lassen.",
+      "Bohnen und Mais unterheben, weitere 5 Min. köcheln und mit Salz abschmecken.",
+    ],
+  },
+  {
+    id: "kartoffelpuffer", n: "Kartoffelpuffer mit Apfelkompott", e: "🥔", m: ["mittag", "abend"], s: 2, t: 40, aufw: false,
+    tags: ["deutsch", "vegetarisch", "klassiker"],
+    z: [["kartoffeln", 700], ["eier", 1], ["zwiebel", 1], ["mehl", 30], ["apfel", 3], ["zucker", 15], ["zitrone", 0.5, "opt"], ["oel", 5], ["salz", 2]],
+    st: [
+      "Äpfel schälen, würfeln und mit Zucker, etwas Zitronensaft und 3 EL Wasser 10 Min. weich dünsten.",
+      "Kartoffeln und Zwiebel fein reiben und in einem Tuch kräftig ausdrücken.",
+      "Mit Ei, Mehl und Salz vermengen.",
+      "Portionsweise flach in reichlich heißem Öl von beiden Seiten goldbraun braten, auf Küchenpapier abtropfen lassen.",
+    ],
+  },
+  {
+    id: "ofen_gnocchi", n: "Tomaten-Mozzarella-Gnocchi aus dem Ofen", e: "🍅", m: ["mittag", "abend"], s: 2, t: 30, geraet: "ofen",
+    tags: ["italienisch", "ofen", "vegetarisch"],
+    z: [["gnocchi", 500], ["passierte_tomaten", 250], ["kirschtomaten", 125], ["mozzarella", 125], ["knoblauch", 1], ["basilikum", 0.5, "opt"], ["oregano", 1], ["oel", 1], ["salz", 1]],
+    st: [
+      "Ofen auf 200 °C vorheizen.",
+      "Passierte Tomaten mit gepresstem Knoblauch, Oregano, Öl und Salz in einer Auflaufform verrühren.",
+      "Gnocchi (roh) und halbierte Kirschtomaten untermischen, Mozzarella zerzupfen und darauf verteilen.",
+      "20 Min. backen, bis der Käse blubbert. Mit Basilikum servieren.",
+    ],
+  },
+  {
+    id: "tortellini_tomate", n: "Tortellini in Tomaten-Sahne-Sauce", e: "🥟", m: ["mittag", "abend"], s: 2, t: 15,
+    tags: ["italienisch", "pasta", "vegetarisch", "schnell"],
+    z: [["tortellini", 500], ["passierte_tomaten", 250], ["sahne", 100], ["spinat", 60, "opt"], ["knoblauch", 1], ["parmesan", 20, "opt"], ["oregano", 1], ["salz", 1]],
+    st: [
+      "Tortellini nach Packungsanweisung in Salzwasser garen.",
+      "Passierte Tomaten mit Knoblauch und Oregano 5 Min. köcheln, Sahne einrühren.",
+      "Spinat in der Sauce zusammenfallen lassen, mit Salz abschmecken.",
+      "Tortellini abgießen, in der Sauce schwenken und mit Parmesan servieren.",
+    ],
+  },
+  {
+    id: "erdnuss_nudelsalat", n: "Erdnuss-Nudelsalat mit Gurke", e: "🥜", m: ["mittag", "abend"], s: 2, t: 15,
+    tags: ["asiatisch", "salat", "vegetarisch", "mitnehmen", "schnell"],
+    z: [["mienudeln", 125], ["erdnussbutter", 40], ["sojasauce", 20], ["gurke", 0.5], ["karotte", 1], ["fruehlingszwiebel", 2], ["limette", 0.5], ["honig", 1], ["chiliflocken", 0.5, "opt"]],
+    st: [
+      "Mie-Nudeln nach Packungsanweisung garen, kalt abspülen.",
+      "Erdnussbutter mit Sojasauce, Limettensaft, Honig und 3 EL warmem Wasser glatt rühren.",
+      "Gurke und Karotte in feine Stifte, Frühlingszwiebeln in Ringe schneiden.",
+      "Alles mit der Sauce mischen und mit Chiliflocken bestreuen. Schmeckt warm und kalt.",
+    ],
+  },
+
   // =================== FRÜHSTÜCK ===================
   {
     id: "overnight_oats", n: "Overnight Oats mit Beeren", e: "🫐", m: ["fruehstueck"], s: 1, t: 5,
@@ -651,6 +980,47 @@ window.REZEPTE = [
       "Haferflocken mit Milch aufkochen und 3–4 Min. unter Rühren köcheln.",
       "Halbe Banane hineinzerdrücken, die andere Hälfte in Scheiben obendrauf.",
       "Mit Erdnussbutter und Honig toppen.",
+    ],
+  },
+  {
+    id: "joghurt_bowl", n: "Joghurt-Bowl mit Banane & Erdnussbutter", e: "🍌", m: ["fruehstueck"], s: 1, t: 5,
+    tags: ["frühstück", "süß", "schnell"],
+    z: [["joghurt", 150], ["banane", 1], ["haferflocken", 30], ["erdnussbutter", 15], ["honig", 1, "opt"]],
+    st: [
+      "Joghurt in eine Schale geben.",
+      "Banane in Scheiben schneiden und mit den Haferflocken darauf verteilen.",
+      "Erdnussbutter leicht erwärmen, darüberträufeln und nach Geschmack mit Honig süßen.",
+    ],
+  },
+  {
+    id: "omelett", n: "Käse-Omelett mit Tomate", e: "🍳", m: ["fruehstueck"], s: 1, t: 10,
+    tags: ["frühstück", "eier", "proteinreich"],
+    z: [["eier", 2], ["tomate", 1], ["gouda", 20], ["fruehlingszwiebel", 1, "opt"], ["butter", 5], ["salz", 1], ["pfeffer", 1]],
+    st: [
+      "Eier mit Salz und Pfeffer verquirlen, Tomate würfeln.",
+      "Butter in einer Pfanne schmelzen, Eier hineingeben und bei mittlerer Hitze stocken lassen.",
+      "Tomate, Käse und Frühlingszwiebel auf eine Hälfte geben, zuklappen und 1 Min. weiterbraten.",
+    ],
+  },
+  {
+    id: "french_toast", n: "French Toast mit Beeren", e: "🍞", m: ["fruehstueck"], s: 1, t: 15,
+    tags: ["frühstück", "süß"],
+    z: [["toastbrot", 80], ["eier", 1], ["milch", 60], ["tk_beeren", 60], ["zucker", 5], ["butter", 10]],
+    st: [
+      "Ei mit Milch und Zucker verquirlen.",
+      "Toastscheiben darin kurz von beiden Seiten einweichen.",
+      "In Butter bei mittlerer Hitze von jeder Seite 2–3 Min. goldbraun braten.",
+      "Beeren in der Pfanne kurz erwärmen und darüber geben.",
+    ],
+  },
+  {
+    id: "bircher", n: "Bircher-Müsli mit Apfel", e: "🍎", m: ["fruehstueck"], s: 1, t: 5,
+    tags: ["frühstück", "vorbereiten", "mitnehmen"],
+    z: [["haferflocken", 50], ["milch", 80], ["joghurt", 80], ["apfel", 1], ["zitrone", 0.25, "opt"], ["honig", 1]],
+    st: [
+      "Haferflocken mit Milch und Joghurt verrühren.",
+      "Apfel mit Schale grob reiben, mit etwas Zitronensaft beträufeln und unterheben.",
+      "Mit Honig süßen und über Nacht oder mindestens 30 Min. im Kühlschrank quellen lassen.",
     ],
   },
 ];

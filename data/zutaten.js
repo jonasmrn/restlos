@@ -4,6 +4,7 @@
 // sh = Haltbarkeit nach dem Öffnen in Tagen, fz = einfrierbar, vorrat = Basis-Vorrat (kommt nicht auf die Liste)
 // nw = Nährwerte je 100 g/ml (Durchschnittswerte): [kcal, Eiweiß, Kohlenhydrate, davon Zucker, Fett, davon gesättigt, Ballaststoffe, Salz]
 // g  = Gramm pro Einheit (essbarer Anteil) bei Zutaten, die nicht in g/ml gezählt werden
+// fisch = Fisch/Meeresfrüchte, tier = tierisches Produkt ohne Fleisch/Fisch (für die Filter vegetarisch/vegan)
 
 window.KATEGORIEN = [
   { id: "gemuese", name: "Obst & Gemüse", icon: "🥕" },
@@ -37,7 +38,7 @@ window.ZUTATEN = {
   romanasalat:      { n: "Romanasalat-Herzen", cat: "gemuese", u: "Stk", p: 2, pl: "2er-Pack", pr: 1.29, sh: 5, nw: [17, 1.2, 3.3, 1.2, 0.3, 0, 2.1, 0], g: 150 },
   rucola:           { n: "Rucola", cat: "gemuese", u: "g", p: 125, pl: "Schale 125 g", pr: 1.19, sh: 2, nw: [25, 2.6, 3.7, 2, 0.7, 0.1, 1.6, 0.1] },
   lauch:            { n: "Lauch", cat: "gemuese", u: "Stk", p: 1, pl: "1 Stange", pr: 0.79, sh: 7, nw: [31, 1.5, 6, 3, 0.3, 0, 2.2, 0], g: 200 },
-  fruehlingszwiebel:{ n: "Frühlingszwiebeln", cat: "gemuese", u: "Stange", p: 6, pl: "1 Bund (ca. 6 Stangen)", pr: 0.69, sh: 5 },
+  fruehlingszwiebel:{ n: "Frühlingszwiebeln", cat: "gemuese", u: "Stange", p: 6, pl: "1 Bund (ca. 6 Stangen)", pr: 0.69, sh: 5, nw: [32, 1.8, 7.3, 2.3, 0.2, 0, 2.6, 0], g: 15 },
   kartoffeln:       { n: "Kartoffeln (festkochend)", cat: "gemuese", u: "g", p: 1500, pl: "Beutel 1,5 kg", pr: 1.99, sh: 21, nw: [77, 2, 17, 0.8, 0.1, 0, 2.2, 0] },
   suesskartoffel:   { n: "Süßkartoffeln", cat: "gemuese", u: "g", p: 500, pl: "ca. 500 g", pr: 1.49, sh: 14, nw: [86, 1.6, 20, 4.2, 0.1, 0, 3, 0.1] },
   ingwer:           { n: "Ingwer", cat: "gemuese", u: "g", p: 50, pl: "Stück ca. 50 g", pr: 0.39, sh: 21, fz: true, nw: [80, 1.8, 18, 1.7, 0.8, 0.2, 2, 0] },
@@ -47,6 +48,7 @@ window.ZUTATEN = {
   petersilie:       { n: "Petersilie", cat: "gemuese", u: "Bund", p: 1, pl: "1 Bund", pr: 0.79, sh: 5, fz: true, nw: [36, 3, 6.3, 0.9, 0.8, 0.1, 3.3, 0.1], g: 30 },
   basilikum:        { n: "Basilikum", cat: "gemuese", u: "Topf", p: 1, pl: "1 Topf", pr: 1.69, sh: 10, nw: [23, 3.2, 2.7, 0.3, 0.6, 0, 1.6, 0], g: 20 },
   banane:           { n: "Bananen", cat: "gemuese", u: "Stk", p: 5, pl: "Bund ca. 1 kg (5 Stk)", pr: 1.29, sh: 5, fz: true, nw: [89, 1.1, 22.8, 12.2, 0.3, 0.1, 2.6, 0], g: 120 },
+  kuerbis:          { n: "Hokkaido-Kürbis", cat: "gemuese", u: "Stk", p: 1, pl: "1 Stk (ca. 1 kg)", pr: 1.99, sh: 7, fz: true, nw: [40, 1.5, 8, 5, 0.2, 0, 2.5, 0], g: 850 },
   apfel:            { n: "Äpfel", cat: "gemuese", u: "Stk", p: 6, pl: "Beutel 1 kg (ca. 6 Stk)", pr: 1.99, sh: 21, nw: [52, 0.3, 13.8, 10.4, 0.2, 0, 2.4, 0], g: 150 },
 
   // ---------- Brot & Backwaren ----------
@@ -73,6 +75,8 @@ window.ZUTATEN = {
   quark:            { n: "Magerquark", cat: "kuehl", u: "g", p: 500, pl: "Becher 500 g", pr: 1.29, sh: 5, nw: [67, 12, 4, 4, 0.3, 0.2, 0, 0.1] },
   gnocchi:          { n: "Gnocchi", cat: "kuehl", u: "g", p: 500, pl: "Packung 500 g", pr: 1.29, sh: 3, nw: [155, 3.5, 33, 0.5, 0.6, 0.1, 2, 1.1] },
   flammkuchenteig:  { n: "Flammkuchenteig", cat: "kuehl", u: "Stk", p: 1, pl: "1 Rolle", pr: 1.29, sh: 1, nw: [290, 7, 46, 2.5, 8.5, 3.5, 2, 1.2], g: 260 },
+  tortellini:       { n: "Frische Tortellini", cat: "kuehl", u: "g", p: 250, pl: "Packung 250 g", pr: 1.79, sh: 3, nw: [270, 11, 40, 2, 7, 3, 2.5, 1.2] },
+  spaetzle_frisch:  { n: "Frische Spätzle", cat: "kuehl", u: "g", p: 500, pl: "Packung 500 g", pr: 1.39, sh: 4, nw: [160, 5.5, 30, 0.5, 2, 0.5, 1.5, 0.8] },
   tofu:             { n: "Tofu natur", cat: "kuehl", u: "g", p: 200, pl: "Packung 200 g", pr: 1.49, sh: 3, nw: [120, 13, 1.5, 0.5, 7, 1, 1, 0] },
 
   // ---------- Fleisch & Wurst ----------
@@ -88,6 +92,10 @@ window.ZUTATEN = {
   // ---------- Tiefkühl ----------
   tk_erbsen:        { n: "Erbsen (TK)", cat: "tk", u: "g", p: 450, pl: "Beutel 450 g", pr: 0.99, sh: 120, tk: true, nw: [81, 5.4, 14.5, 5.7, 0.4, 0.1, 5.1, 0] },
   tk_spinat:        { n: "Blattspinat (TK)", cat: "tk", u: "g", p: 450, pl: "Packung 450 g", pr: 1.19, sh: 120, tk: true, nw: [23, 2.9, 3.6, 0.4, 0.4, 0.1, 2.2, 0.2] },
+  lachs:            { n: "Lachsfilet (TK)", cat: "tk", u: "g", p: 250, pl: "Packung 250 g (2 Filets)", pr: 3.99, sh: 120, tk: true, fisch: true, nw: [200, 20, 0, 0, 13.5, 2.5, 0, 0.1] },
+  seelachs:         { n: "Alaska-Seelachsfilet (TK)", cat: "tk", u: "g", p: 400, pl: "Packung 400 g", pr: 3.49, sh: 120, tk: true, fisch: true, nw: [76, 17.5, 0, 0, 0.6, 0.1, 0, 0.3] },
+  garnelen:         { n: "Garnelen (TK, roh)", cat: "tk", u: "g", p: 225, pl: "Packung 225 g", pr: 3.99, sh: 120, tk: true, fisch: true, nw: [70, 15.5, 0.5, 0, 0.8, 0.2, 0, 0.9] },
+  fischstaebchen:   { n: "Fischstäbchen (TK)", cat: "tk", u: "Stk", p: 15, pl: "Packung 450 g (15 Stk)", pr: 2.29, sh: 120, tk: true, fisch: true, nw: [200, 12, 18, 1, 9, 1, 1, 0.8], g: 30 },
   tk_beeren:        { n: "Beerenmischung (TK)", cat: "tk", u: "g", p: 500, pl: "Beutel 500 g", pr: 2.49, sh: 120, tk: true, nw: [45, 1, 8.5, 6, 0.4, 0, 5, 0] },
 
   // ---------- Nudeln, Reis & Co. ----------
@@ -105,7 +113,7 @@ window.ZUTATEN = {
 
   // ---------- Konserven & Saucen ----------
   gehackte_tomaten: { n: "Gehackte Tomaten", cat: "konserven", u: "g", p: 400, pl: "Dose 400 g", pr: 0.65, sh: 3, fz: true, nw: [22, 1.2, 3.5, 3.2, 0.2, 0, 1, 0.1] },
-  passierte_tomaten:{ n: "Passierte Tomaten", cat: "konserven", u: "g", p: 500, pl: "Packung 500 g", pr: 0.69, sh: 3, fz: true },
+  passierte_tomaten:{ n: "Passierte Tomaten", cat: "konserven", u: "g", p: 500, pl: "Packung 500 g", pr: 0.69, sh: 3, fz: true, nw: [25, 1.3, 4, 3.5, 0.2, 0, 1, 0.1] },
   tomatenmark:      { n: "Tomatenmark", cat: "konserven", u: "g", p: 200, pl: "Tube 200 g", pr: 0.99, sh: 60, nw: [85, 4.5, 14, 12, 0.4, 0.1, 4, 0.2] },
   kidneybohnen:     { n: "Kidneybohnen", cat: "konserven", u: "g", p: 250, pl: "Dose (250 g abgetropft)", pr: 0.69, sh: 3, fz: true, nw: [115, 8, 15, 1, 0.6, 0.1, 7, 0.6] },
   kichererbsen:     { n: "Kichererbsen", cat: "konserven", u: "g", p: 240, pl: "Dose (240 g abgetropft)", pr: 0.79, sh: 3, fz: true, nw: [125, 7, 17, 0.5, 2.5, 0.3, 6, 0.6] },
@@ -113,6 +121,7 @@ window.ZUTATEN = {
   kokosmilch:       { n: "Kokosmilch", cat: "konserven", u: "ml", p: 400, pl: "Dose 400 ml", pr: 1.29, sh: 3, fz: true, nw: [180, 1.8, 3, 2, 18, 16, 0, 0.05] },
   currypaste:       { n: "Rote Currypaste", cat: "konserven", u: "g", p: 110, pl: "Glas 110 g", pr: 1.99, sh: 30, nw: [110, 2, 11, 6, 6, 1, 4, 8] },
   pesto:            { n: "Pesto Genovese", cat: "konserven", u: "g", p: 190, pl: "Glas 190 g", pr: 1.49, sh: 7, fz: true, nw: [480, 5, 6, 3, 48, 7, 2.5, 2.3] },
+  thunfisch:        { n: "Thunfisch im eigenen Saft", cat: "konserven", u: "g", p: 150, pl: "Dose (150 g abgetropft)", pr: 1.49, sh: 2, nw: [110, 26, 0, 0, 1, 0.3, 0, 0.9], fisch: true },
   sojasauce:        { n: "Sojasauce", cat: "konserven", u: "ml", p: 250, pl: "Flasche 250 ml", pr: 1.29, sh: 365, nw: [55, 8, 5, 1, 0, 0, 0, 16] },
 
   // ---------- Basis-Vorrat (standardmäßig vorhanden) ----------
@@ -131,3 +140,7 @@ window.ZUTATEN = {
   honig:            { n: "Honig", cat: "vorrat", u: "TL", p: 50, pl: "Glas", pr: 2.49, sh: 999, vorrat: true, nw: [304, 0.3, 82, 82, 0, 0, 0, 0], g: 7 },
   essig:            { n: "Essig", cat: "vorrat", u: "EL", p: 50, pl: "Flasche", pr: 0.69, sh: 999, vorrat: true, nw: [18, 0, 0.6, 0.6, 0, 0, 0, 0], g: 15 },
 };
+
+// Tierische Produkte (nicht vegan); Fleisch ergibt sich aus der Abteilung, Fisch aus `fisch`
+for (const id of ["milch", "sahne", "schmand", "frischkaese", "feta", "mozzarella", "gouda", "parmesan", "halloumi", "butter", "eier",
+  "joghurt", "quark", "honig", "pesto", "mienudeln", "tortellini", "spaetzle_frisch"]) window.ZUTATEN[id].tier = true;

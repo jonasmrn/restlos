@@ -1,5 +1,5 @@
 // Netzwerk zuerst (damit neue Angebote sofort ankommen), offline aus dem Cache.
-const CACHE = "restlos-v2";
+const CACHE = "restlos-v3";
 const DATEIEN = [
   "./", "index.html", "css/style.css", "js/logik.js", "js/app.js",
   "data/zutaten.js", "data/sortiment.js", "data/rezepte.js", "data/maerkte.js", "data/angebote.js",
