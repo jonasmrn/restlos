@@ -949,7 +949,9 @@
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
     // Animation nur beim Öffnen, nicht bei jedem Neuzeichnen
     const still = !neu && alt ? " still" : "";
-    root.innerHTML = `<div class="sheet-bg${still}" data-a="sheetZu"></div><div class="sheet${still}" role="dialog" aria-modal="true">${inhalt}</div>`;
+    // Die Artikelsuche füllt immer den sichtbaren Bereich über der Tastatur, damit Treffer direkt unter dem Suchfeld stehen
+    const voll = ui.sheet.typ === "hinzufuegen" ? " voll" : "";
+    root.innerHTML = `<div class="sheet-bg${still}" data-a="sheetZu"></div><div class="sheet${still}${voll}" role="dialog" aria-modal="true">${inhalt}</div>`;
     root.querySelector(".sheet").scrollTop = scroll;
     document.body.style.overflow = "hidden";
   }
@@ -1385,6 +1387,7 @@
     } else if (el.dataset.input === "addSuche") {
       ui.addSuche = el.value;
       document.getElementById("addgrid").innerHTML = addGridHtml();
+      document.querySelector(".sheet").scrollTop = 0;
     } else if (el.dataset.input === "sheetSuche") {
       ui.sheetSuche = el.value;
       document.getElementById("suglist").innerHTML = vorschlagListe();
@@ -1400,6 +1403,17 @@
       else A.freiNeu();
     }
   });
+
+  // Höhe des sichtbaren Bereichs (ohne Bildschirmtastatur) für Sheets mit Suchfeld
+  const vv = window.visualViewport;
+  function viewportMerken() {
+    if (!vv) return;
+    document.documentElement.style.setProperty("--vvh", `${vv.height}px`);
+    document.documentElement.style.setProperty("--vvtop", `${vv.offsetTop}px`);
+  }
+  vv?.addEventListener("resize", viewportMerken);
+  vv?.addEventListener("scroll", viewportMerken);
+  viewportMerken();
 
   anwendenTheme();
   render();

@@ -239,6 +239,10 @@ nav.tabs .dot { position: absolute; top: 8px; left: calc(50% + 8px); background:
 .sheet-head h2 { font-size: 20px; flex: 1; padding-top: 14px; }
 .sheet-head .iconbtn { margin-top: 10px; }
 .sheet.still, .sheet-bg.still { animation: none; }
+.sheet.voll {
+  top: calc(var(--vvtop, 0px) + var(--safe-t) + 10px); bottom: auto; max-height: none;
+  height: calc(var(--vvh, 100dvh) - var(--safe-t) - 10px); border-radius: 20px 20px 0 0; padding-bottom: 16px;
+}
 @keyframes up { from { transform: translateY(40px); opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
 
