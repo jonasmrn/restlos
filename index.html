@@ -29,7 +29,18 @@
   <script src="js/app.js"></script>
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
+      // Gab es schon einen Service Worker, ist ein Wechsel ein Update: dann einmal neu laden
+      const hatteSW = !!navigator.serviceWorker.controller;
+      let neuGeladen = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hatteSW || neuGeladen) return;
+        neuGeladen = true;
+        location.reload();
+      });
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        // iOS holt die Home-Bildschirm-App oft nur aus dem Hintergrund – dabei auch nach Updates suchen
+        document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+      }).catch(() => {});
     }
   </script>
 </body>
