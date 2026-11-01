@@ -39,6 +39,8 @@
       liste: {},
       freitext: [],
       verlauf: [],
+      eigeneRezepte: [],
+      eigeneZutaten: {},
     };
   }
   // Gespeicherten Zustand mit den Standardwerten zusammenführen (neue Felder bekommen Defaults)
@@ -62,13 +64,30 @@
     return standard();
   }
   let S = laden();
+
+  // Eigene Rezepte und Zutaten in die gemeinsamen Daten einmischen, damit Planer, Einkaufsliste und Filter sie wie alle anderen behandeln
+  function eigeneEinbinden() {
+    if (!window.KATEGORIEN.some((k) => k.id === "eigene")) window.KATEGORIEN.push({ id: "eigene", name: "Eigene Zutaten", icon: "✏️" });
+    for (const [id, z] of Object.entries(Z)) if (z.eigen) delete Z[id];
+    for (const [id, z] of Object.entries(S.eigeneZutaten || {})) {
+      Z[id] = { n: z.n, cat: "eigene", u: "Pck.", p: 1, pl: "eigene Zutat", pr: 0, sh: 7, e: "✏️", s: "", eigen: true };
+    }
+    const R = window.REZEPTE;
+    for (let i = R.length - 1; i >= 0; i--) if (R[i].eigen) { delete REZ[R[i].id]; R.splice(i, 1); }
+    for (const r of S.eigeneRezepte || []) {
+      const rez = { ...r, z: r.z.filter((z) => Z[z[0]]), tags: ["eigen"], eigen: true };
+      R.push(rez);
+      REZ[r.id] = rez;
+    }
+  }
+  eigeneEinbinden();
   function speichern() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignorieren */ }
   }
 
   // Rezeptfilter: mahl/extra/kueche = Mehrfachauswahl, zut = { id: 1 (muss rein) | -1 (soll nicht rein) }
   const RF0 = () => ({ mahl: [], ern: null, zeit: null, preis: null, extra: [], kueche: [], meine: null, zut: {}, sort: "empfohlen", abneigung: false });
-  const ui = { tab: "plan", rf: RF0(), suche: "", zutSuche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null, planer: null };
+  const ui = { tab: "plan", rTab: "sammlung", entwurf: null, ezSuche: "", rf: RF0(), suche: "", zutSuche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null, planer: null };
   try { ui.tab = sessionStorage.getItem("restlos-tab") || "plan"; } catch (e) { /* egal */ }
 
   // ---------- Hilfen ----------
@@ -276,7 +295,7 @@
 
   // Kalorien pro Portion; im Plan zählen abgewählte Zutaten nicht mit
   const kcalVon = (r, portionen, weg) => L.naehrwerte(r, portionen || r.s, weg || [], S.einstellungen.ausgeschlossen).kcal;
-  const kcalTag = (kcal) => ` <span class="kcal">(${Math.round(kcal / 10) * 10} kcal)</span>`;
+  const kcalTag = (kcal) => (kcal >= 1 ? ` <span class="kcal">(${Math.round(kcal / 10) * 10} kcal)</span>` : "");
   function mahlzeitKcal(key) {
     const m = S.plan.mahlzeiten[key];
     if (m.art === "koch" || m.art === "rest") {
@@ -500,6 +519,7 @@
   const rfAnzahl = (rf = ui.rf) => rf.mahl.length + rf.extra.length + rf.kueche.length + Object.keys(rf.zut).length + ["ern", "zeit", "preis", "meine"].filter((k) => rf[k] != null).length + (rf.abneigung ? 1 : 0);
 
   function rezeptFilter(r, rf = ui.rf, mitAbneigung = rf.abneigung) {
+    if ((ui.rTab === "meine") !== !!r.eigen) return false;
     const gesperrt = S.gesperrt.includes(r.id);
     if (rf.meine === "gesperrt" ? !gesperrt : gesperrt) return false;
     if (!mitAbneigung && rf.meine !== "gesperrt" && L.kernKonflikte(r, S.einstellungen.ausgeschlossen).length) return false;
@@ -578,10 +598,86 @@
   }
   function viewRezepte() {
     const n = rfAnzahl();
-    return `<div class="row"><input class="search grow" type="search" placeholder="Gericht oder Zutat, z. B. Hack" value="${esc(ui.suche)}" data-input="suche" aria-label="Rezepte durchsuchen">
+    const eigene = (S.eigeneRezepte || []).length;
+    return `<div class="seg" role="tablist">
+        <button class="${ui.rTab === "sammlung" ? "on" : ""}" data-a="rTab" data-id="sammlung" role="tab">📚 Sammlung <span>${window.REZEPTE.length - eigene}</span></button>
+        <button class="${ui.rTab === "meine" ? "on" : ""}" data-a="rTab" data-id="meine" role="tab">👤 Meine Rezepte <span>${eigene}</span></button>
+      </div>
+      ${ui.rTab === "meine" && !eigene ? `<div class="card hero"><div class="big">👩‍🍳</div><h2>Deine eigenen Rezepte</h2>
+        <p>Leg Gerichte an, die du gerne kochst: Name und Zutaten reichen. Planst du sie ein, landen die Zutaten automatisch auf der Einkaufsliste.</p>
+        <button class="btn primary" data-a="rezeptNeu">＋ Erstes Rezept anlegen</button></div>` : `
+      ${ui.rTab === "meine" ? `<button class="neu-rezept" data-a="rezeptNeu"><span class="plus">＋</span><span class="grow"><b>Neues Rezept anlegen</b><span>Name und Zutaten, Zubereitung optional</span></span></button>` : ""}
+      <div class="row"><input class="search grow" type="search" placeholder="Gericht oder Zutat, z. B. Hack" value="${esc(ui.suche)}" data-input="suche" aria-label="Rezepte durchsuchen">
         <button class="filterbtn ${n ? "on" : ""}" data-a="filterSheet" aria-label="Filter">☰ Filter${n ? `<span class="dot">${n}</span>` : ""}</button></div>
       <div class="chips scroll" style="margin-top:10px" id="rchips">${schnellChips()}</div>
-      <div id="rlist">${rezeptListeHtml()}</div>`;
+      <div id="rlist">${rezeptListeHtml()}</div>`}`;
+  }
+
+  // ---------- Sheet: Eigenes Rezept anlegen / bearbeiten ----------
+  const SYMBOLE = ["🍽️", "🍝", "🍲", "🥘", "🍛", "🍜", "🍚", "🥗", "🥪", "🌯", "🍕", "🍔", "🍳", "🥣", "🥩", "🍗", "🐟", "🥦", "🥔", "🧀", "🥞", "🍰"];
+  function entwurfVon(r) {
+    if (r) return { id: r.id, n: r.n, e: r.e, m: [...r.m], s: r.s, t: r.t, z: r.z.map((z) => [z[0], z[1]]), st: (r.st || []).join("\n") };
+    return { id: null, n: "", e: "🍽️", m: ["mittag", "abend"], s: 2, t: 30, z: [], st: "" };
+  }
+  const mengeText = (x) => String(Math.round(x * 100) / 100).replace(".", ",");
+  function sheetEditor() {
+    const E = ui.entwurf;
+    return sheetKopf(E.id ? "✏️ Rezept bearbeiten" : "👩‍🍳 Neues Rezept") + `
+      <div class="card">
+        <label class="lbl-o" for="e-name">Name des Gerichts</label>
+        <input id="e-name" class="input block" type="text" placeholder="z. B. Omas Kartoffelsalat" value="${esc(E.n)}" data-input="eName" autocomplete="off">
+        <div class="lbl-o" style="margin-top:12px">Symbol</div>
+        <div class="symbole">${SYMBOLE.map((x) => `<button class="${E.e === x ? "on" : ""}" data-a="eSymbol" data-v="${x}" aria-label="Symbol ${x}">${x}</button>`).join("")}</div>
+      </div>
+      <div class="card">
+        <div class="row between"><h2 style="margin:0">Zutaten</h2><span class="tiny muted">Mengen für ${plural(E.s, "Portion", "Portionen")}</span></div>
+        ${E.z.length ? `<ul class="list ez-liste">${E.z.map(([id, m], i) => `<li><span class="ez-e">${Z[id].e || "🛒"}</span>
+            <span class="grow"><span class="n">${esc(Z[id].n)}</span><div class="tiny muted">${esc(Z[id].pl)}</div></span>
+            <input class="input ez-menge" type="text" inputmode="decimal" value="${mengeText(m)}" data-input="eMenge" data-i="${i}" aria-label="Menge ${esc(Z[id].n)}">
+            <span class="ez-u">${esc(Z[id].u)}</span>
+            <button class="iconbtn" style="width:34px;height:34px;font-size:14px" data-a="eZutatWeg" data-i="${i}" aria-label="${esc(Z[id].n)} entfernen">✕</button></li>`).join("")}</ul>`
+          : `<p class="small muted" style="margin:6px 0 0">Noch keine Zutaten. Such unten nach einer Zutat und tippe sie an.</p>`}
+        <input id="ezsuche" class="search" style="margin-top:10px" type="search" placeholder="＋ Zutat hinzufügen, z. B. Zwiebel" value="${esc(ui.ezSuche)}" data-input="ezSuche" autocomplete="off" aria-label="Zutat suchen">
+        <div id="eztreffer">${ezTrefferHtml()}</div>
+        <p class="tiny muted" style="margin:8px 0 0">Salz, Pfeffer, Öl und Co. aus dem Basis-Vorrat kommen nicht auf die Einkaufsliste.</p>
+      </div>
+      <div class="card">
+        <div class="lbl-o">Mahlzeit</div>
+        <div class="chips" style="margin-bottom:6px">${L.SLOTS.map((x) => `<button class="chip ${E.m.includes(x) ? "on" : ""}" data-a="eMahl" data-v="${x}">${L.SLOT_ICON[x]} ${L.SLOT_NAME[x]}</button>`).join("")}</div>
+        <div class="field"><span class="lbl">Portionen<span class="hint">für die Mengen oben</span></span>
+          <span class="stepper"><button data-a="ePortion" data-delta="-1" aria-label="weniger">−</button><span>${E.s}</span><button data-a="ePortion" data-delta="1" aria-label="mehr">+</button></span></div>
+        <div class="field"><label for="e-zeit">Zeit in Minuten</label><input id="e-zeit" class="input" type="number" inputmode="numeric" min="1" style="width:90px" value="${E.t || ""}" data-input="eZeit"></div>
+      </div>
+      <div class="card">
+        <label class="lbl-o" for="e-st">Zubereitung <span class="muted" style="font-weight:500">(optional)</span></label>
+        <textarea id="e-st" class="input block" rows="5" placeholder="Ein Schritt pro Zeile …" data-input="eSchritte">${esc(E.st)}</textarea>
+      </div>
+      <div class="sheet-foot row">
+        ${E.id ? `<button class="btn danger" data-a="eLoeschen">Löschen</button>` : ""}
+        <button class="btn primary grow" data-a="eSpeichern">💾 Speichern</button>
+      </div>`;
+  }
+  function ezTrefferHtml() {
+    const q = ui.ezSuche.trim();
+    if (!q) return "";
+    const drin = new Set(ui.entwurf.z.map((z) => z[0]));
+    // Rezeptzutaten (mit Nährwerten und Packungsgröße) vor reinen Einkaufsartikeln
+    const ids = L.suche(q).filter((id) => !drin.has(id)).sort((a, b) => !!Z[a].sortiment - !!Z[b].sortiment).slice(0, 12);
+    const exakt = Object.values(Z).some((z) => L.normal(z.n) === L.normal(q));
+    return `<div class="chips" style="margin-top:8px">${ids.map((id) => `<button class="chip" data-a="eZutat" data-id="${id}">${Z[id].e || "🛒"} ${esc(Z[id].n)}</button>`).join("")}
+      ${exakt ? "" : `<button class="chip neu" data-a="eZutatNeu">✏️ „${esc(q)}“ als eigene Zutat</button>`}</div>`;
+  }
+  // Standardmenge für eine neu hinzugefügte Zutat
+  function startMenge(id) {
+    const z = Z[id];
+    if (z.u === "g" || z.u === "ml") return Math.min(z.p, z.p >= 400 ? z.p / 2 : z.p);
+    return 1;
+  }
+  function eZutatDazu(id) {
+    ui.entwurf.z.push([id, startMenge(id)]);
+    ui.ezSuche = "";
+    renderSheet();
+    document.getElementById("ezsuche")?.focus();
   }
 
   // ---------- Sheet: Filter ----------
@@ -725,7 +821,7 @@
     return `<div class="tile ${x.ausPlan > 0 ? "plan" : ""} ${gekauft ? "done" : ""}">
       <button class="tile-main" data-a="abhaken" data-id="${x.id}" aria-label="${esc(z.n)} ${gekauft ? "zurück auf die Liste" : "gekauft"}">
         <span class="tile-e">${z.e || "🛒"}</span><span class="tile-n">${esc(z.n)}</span>
-        <span class="tile-m">${x.packungen > 1 ? `${x.packungen}× · ` : ""}${L.euro(p.preis * x.packungen)}</span>
+        <span class="tile-m">${x.packungen > 1 ? `${x.packungen}× · ` : ""}${z.eigen ? "eigene Zutat" : L.euro(p.preis * x.packungen)}</span>
       </button>
       <span class="tile-badges">${x.ausPlan > 0 ? "🗓️" : ""}${p.angebot ? "🏷️" : ""}</span>
       <button class="tile-more" data-a="artikel" data-id="${x.id}" aria-label="Details zu ${esc(z.n)}">⋯</button>
@@ -808,11 +904,11 @@
     }
     html += `<div class="card"><div class="row between"><span><b>${x.ausPlan > 0 ? "Zusätzlich" : "Anzahl"}</b><div class="tiny muted">${esc(z.pl)}</div></span>
         <span class="stepper"><button data-a="menge" data-id="${id}" data-delta="-1">−</button><span>${extra}</span><button data-a="menge" data-id="${id}" data-delta="1">+</button></span></div></div>
-      <div class="card"><h2>Preis je Packung</h2><ul class="list">
+      ${z.eigen ? `<p class="small muted">Eigene Zutat aus deinen Rezepten, ohne hinterlegten Preis.</p>` : `<div class="card"><h2>Preis je Packung</h2><ul class="list">
         ${preise.map(({ m, p }, i) => `<li><span class="grow"><span class="mdot" style="background:${marktFarbe(m)}"></span><span class="n">${marktName(m)}</span>${i === 0 ? ` <span class="badge green">günstigster</span>` : ""}
           ${p.angebot ? `<div class="tiny" style="color:var(--offer)">🏷️ ${esc(p.angebot.text || "Angebot")}</div>` : ""}</span>
           <span class="m">${p.angebot ? `<b style="color:var(--offer)">${L.euro(p.preis)}</b> <s class="tiny muted">${L.euro(p.normal)}</s>` : L.euro(p.preis)}</span></li>`).join("")}
-      </ul><p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt, Angebote laut Prospekt.</p></div>`;
+      </ul><p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt, Angebote laut Prospekt.</p></div>`}`;
     if (extra > 0) html += `<button class="btn danger block" data-a="artikelWeg" data-id="${id}">Von der Liste nehmen</button>`;
     return html;
   }
@@ -945,7 +1041,7 @@
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
     const alt = root.querySelector(".sheet");
     const scroll = !neu && alt ? alt.scrollTop : 0;
-    const inhalt = { slot: sheetSlot, rezept: sheetRezept, einplanen: sheetEinplanen, bestaetigen: sheetBestaetigen, hinzufuegen: sheetHinzufuegen, artikel: sheetArtikel, planer: sheetPlaner, filter: sheetFilter }[ui.sheet.typ]();
+    const inhalt = { slot: sheetSlot, rezept: sheetRezept, einplanen: sheetEinplanen, bestaetigen: sheetBestaetigen, hinzufuegen: sheetHinzufuegen, artikel: sheetArtikel, planer: sheetPlaner, filter: sheetFilter, editor: sheetEditor }[ui.sheet.typ]();
     if (!ui.sheet) { root.innerHTML = ""; document.body.style.overflow = ""; return; }
     // Animation nur beim Öffnen, nicht bei jedem Neuzeichnen
     const still = !neu && alt ? " still" : "";
@@ -1065,9 +1161,9 @@
       <p class="tiny muted" style="margin:8px 0 0">${k ? "Schalter aus = Zutat weglassen, sie verschwindet von der Einkaufsliste." : "Zutaten weglassen kannst du, sobald das Gericht im Plan ist. Dauerhafte Abneigungen stellst du unter Einstellungen ein."}</p>
       ${preisZeile(L.rezeptPreis(r, S, portionen, k?.weg || []), portionen)}
     </div>
-    ${naehrwertKarte(L.naehrwerte(r, portionen, k?.weg || [], aus), !!k?.weg?.length || zs.some((z) => z.grund === "mag ich nicht"))}
-    <div class="card"><h2>Zubereitung</h2><ol class="steps">${r.st.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
-      ${r.tipp ? `<div class="note green small">💡 ${esc(r.tipp)}</div>` : ""}</div>`;
+    ${L.naehrwerte(r, portionen, k?.weg || [], aus).kcal >= 1 ? naehrwertKarte(L.naehrwerte(r, portionen, k?.weg || [], aus), !!k?.weg?.length || zs.some((z) => z.grund === "mag ich nicht"), zs.some((z) => z.aktiv && !Z[z.id].nw && !Z[z.id].vorrat)) : ""}
+    ${r.st?.length ? `<div class="card"><h2>Zubereitung</h2><ol class="steps">${r.st.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+      ${r.tipp ? `<div class="note green small">💡 ${esc(r.tipp)}</div>` : ""}</div>` : ""}`;
 
     if (gut.length) {
       html += `<div class="card"><h2>♻️ Passt gut dazu</h2><p class="small muted" style="margin-top:0">Diese Gerichte brauchen auf, was von den Packungen übrig bleibt.</p>
@@ -1084,7 +1180,8 @@
     html += `<div class="btns" style="margin-bottom:8px">
       <button class="btn ${w ? "primary" : ""}" data-a="wunsch" data-id="${r.id}">${w ? "⭐ Auf der Wunschliste" : "☆ Will ich essen"}</button>
       ${S.plan ? `<button class="btn" data-a="einplanen" data-id="${r.id}">🗓️ In den Plan</button>` : ""}
-    </div>`;
+    </div>
+    ${r.eigen ? `<button class="btn block" style="margin-bottom:8px" data-a="rezeptBearbeiten" data-id="${r.id}">✏️ Rezept bearbeiten</button>` : ""}`;
     return html;
   }
 
@@ -1094,7 +1191,7 @@
       ${pr.angebot ? `<span class="tiny" style="text-align:right">🏷️ dank Angeboten<br><s class="muted">${L.euro(pr.normal)}</s></span>` : ""}</div>`;
   }
 
-  function naehrwertKarte(n, angepasst) {
+  function naehrwertKarte(n, angepasst, unvollstaendig = false) {
     const g = (x) => `${x.toLocaleString("de-DE", { maximumFractionDigits: x < 10 ? 1 : 0 })} g`;
     // Energieanteile der Makronährstoffe (Eiweiß/KH 4 kcal/g, Fett 9 kcal/g)
     const e = n.eiweiss * 4, kh = n.kh * 4, f = n.fett * 9, sum = e + kh + f || 1;
@@ -1118,7 +1215,7 @@
         <li><span class="grow">Ballaststoffe</span><span class="m">${g(n.bal)}</span></li>
         <li><span class="grow">Salz</span><span class="m">${g(n.salz)}</span></li>
       </ul>
-      <p class="tiny muted" style="margin:8px 0 0">Richtwerte, berechnet aus Durchschnittswerten der Zutaten${angepasst ? ". Weggelassene Zutaten sind schon herausgerechnet" : ""}.</p>
+      <p class="tiny muted" style="margin:8px 0 0">Richtwerte, berechnet aus Durchschnittswerten der Zutaten${angepasst ? ". Weggelassene Zutaten sind schon herausgerechnet" : ""}${unvollstaendig ? ". Zutaten ohne hinterlegte Nährwerte fehlen" : ""}.</p>
     </div>`;
   }
 
@@ -1231,6 +1328,60 @@
     },
     einplanen: (ds) => oeffneSheet({ typ: "einplanen", rid: ds.id }),
     einplanenHier: (ds) => { aendern(() => setzeRezept(ds.key, ds.id), "Eingeplant"); schliesseSheet(); },
+    rTab: (ds) => { ui.rTab = ds.id; render(); },
+    rezeptNeu: () => { ui.entwurf = entwurfVon(null); ui.ezSuche = ""; oeffneSheet({ typ: "editor" }); },
+    rezeptBearbeiten: (ds) => { ui.entwurf = entwurfVon(REZ[ds.id]); ui.ezSuche = ""; oeffneSheet({ typ: "editor" }); },
+    eSymbol: (ds) => { ui.entwurf.e = ds.v; renderSheet(); },
+    eMahl: (ds) => { const m = ui.entwurf.m; ui.entwurf.m = m.includes(ds.v) ? m.filter((x) => x !== ds.v) : [...m, ds.v]; renderSheet(); },
+    ePortion: (ds) => { ui.entwurf.s = Math.min(12, Math.max(1, ui.entwurf.s + Number(ds.delta))); renderSheet(); },
+    eZutat: (ds) => eZutatDazu(ds.id),
+    eZutatNeu: () => {
+      const n = ui.ezSuche.trim();
+      if (!n) return;
+      let id = Object.keys(S.eigeneZutaten).find((k) => L.normal(S.eigeneZutaten[k].n) === L.normal(n));
+      if (!id) {
+        id = `ez${Date.now().toString(36)}`;
+        S.eigeneZutaten[id] = { n };
+        eigeneEinbinden();
+        speichern();
+      }
+      eZutatDazu(id);
+    },
+    eZutatWeg: (ds) => { ui.entwurf.z.splice(Number(ds.i), 1); renderSheet(); },
+    eSpeichern: () => {
+      const E = ui.entwurf;
+      const n = E.n.trim();
+      if (!n) { toast("Gib dem Gericht einen Namen"); document.getElementById("e-name")?.focus(); return; }
+      const z = E.z.filter(([, m]) => m > 0);
+      if (!z.length) { toast("Füge mindestens eine Zutat mit Menge hinzu"); return; }
+      if (!E.m.length) { toast("Wähle mindestens eine Mahlzeit"); return; }
+      const r = { id: E.id || `e${Date.now().toString(36)}`, n, e: E.e, m: L.SLOTS.filter((x) => E.m.includes(x)), s: E.s, t: E.t > 0 ? E.t : 30, z,
+        st: E.st.split("\n").map((x) => x.trim()).filter(Boolean) };
+      const alle = S.eigeneRezepte;
+      const i = alle.findIndex((x) => x.id === r.id);
+      if (i >= 0) alle[i] = r; else alle.push(r);
+      eigeneEinbinden();
+      ui.entwurf = null;
+      ui.rTab = "meine";
+      speichern();
+      renderMain();
+      ui.portionen = null;
+      oeffneSheet({ typ: "rezept", rid: r.id, koch: null });
+      toast(i >= 0 ? "Rezept gespeichert" : `${n} angelegt 🎉`);
+    },
+    eLoeschen: () => {
+      const id = ui.entwurf.id;
+      frage("Rezept löschen?", `„${esc(REZ[id].n)}“ wird gelöscht. Ist es gerade eingeplant, wird die Mahlzeit wieder frei.`, "Löschen", () => {
+        S.eigeneRezepte = S.eigeneRezepte.filter((x) => x.id !== id);
+        if (S.plan) for (const k of Object.values(S.plan.kochen)) if (k.rid === id) { k.rid = null; k.weg = []; }
+        S.wuensche = S.wuensche.filter((x) => x !== id);
+        S.gesperrt = S.gesperrt.filter((x) => x !== id);
+        delete S.bewertungen[id];
+        S.gefroren = S.gefroren.filter((g) => g.rid !== id);
+        ui.entwurf = null;
+        eigeneEinbinden();
+      }, true);
+    },
     filterSheet: () => { ui.zutSuche = ""; oeffneSheet({ typ: "filter" }); },
     rf: (ds) => { rfSetzen(ds.k, ds.k === "zeit" || ds.k === "preis" ? Number(ds.v) : ds.k === "abneigung" ? true : ds.v); render(); },
     rfSchnell: (ds) => { const [, k, v] = SCHNELL[Number(ds.i)]; rfSetzen(k, v); render(); },
@@ -1338,7 +1489,7 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     },
-    reset: () => frage("Alles zurücksetzen?", "Plan, Einstellungen, Wunschliste und Vorrat werden gelöscht.", "Zurücksetzen", () => { S = standard(); anwendenTheme(); }, true),
+    reset: () => frage("Alles zurücksetzen?", "Plan, Einstellungen, Wunschliste, Vorrat und deine eigenen Rezepte werden gelöscht.", "Zurücksetzen", () => { S = standard(); eigeneEinbinden(); anwendenTheme(); }, true),
   };
 
   const C = {
@@ -1368,6 +1519,7 @@
           const d = JSON.parse(t);
           if (!d.einstellungen) throw new Error();
           S = zusammenfuehren(d);
+          eigeneEinbinden();
           speichern(); anwendenTheme(); render(); toast("Wiederhergestellt");
         } catch (err) { toast("Datei konnte nicht gelesen werden"); }
       });
@@ -1381,6 +1533,17 @@
     if (el.dataset.input === "suche") {
       ui.suche = el.value;
       document.getElementById("rlist").innerHTML = rezeptListeHtml();
+    } else if (el.dataset.input === "eName") {
+      ui.entwurf.n = el.value;
+    } else if (el.dataset.input === "eZeit") {
+      ui.entwurf.t = parseInt(el.value, 10) || null;
+    } else if (el.dataset.input === "eSchritte") {
+      ui.entwurf.st = el.value;
+    } else if (el.dataset.input === "eMenge") {
+      ui.entwurf.z[Number(el.dataset.i)][1] = parseFloat(el.value.replace(",", ".")) || 0;
+    } else if (el.dataset.input === "ezSuche") {
+      ui.ezSuche = el.value;
+      document.getElementById("eztreffer").innerHTML = ezTrefferHtml();
     } else if (el.dataset.input === "zutSuche") {
       ui.zutSuche = el.value;
       document.getElementById("zutchips").innerHTML = zutatChipsHtml();
@@ -1396,6 +1559,13 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && ui.sheet) schliesseSheet();
     // Enter im Suchfeld: genau passenden Artikel hinzufügen, sonst als eigenen Artikel
+    // Enter in der Zutatensuche des Rezept-Editors: ersten Treffer übernehmen, sonst als eigene Zutat
+    if (e.key === "Enter" && e.target.id === "ezsuche" && ui.ezSuche.trim()) {
+      e.preventDefault();
+      const erster = document.querySelector("#eztreffer [data-a]");
+      if (erster) erster.click();
+      return;
+    }
     if (e.key === "Enter" && e.target.id === "addsuche" && ui.addSuche.trim()) {
       e.preventDefault();
       const exakt = L.suche(ui.addSuche).find((id) => L.normal(Z[id].n) === L.normal(ui.addSuche.trim()));

@@ -9,6 +9,7 @@ Statische PWA ohne Build-Schritt und ohne Abhängigkeiten (auf dem Mac gibt es k
 - `data/angebote.js` – Wochenangebote (wird wöchentlich gepflegt, s. u.)
 - `js/logik.js` – Mengen, Einkaufsliste, Marktvergleich, Planer (Kühlschrank-Simulation + gierige Auswahl + lokale Suche). Geplant wird nach einer Auswahl `{ start, tage, keys: ["0-mittag", …], portionen }` aus dem Planungsfenster; die Einstellungen liefern nur die Vorauswahl je Wochentag
 - `js/app.js` – UI, Event-Delegation über `data-a` / `data-change` / `data-input`
+- Eigene Rezepte und Zutaten der Nutzer liegen im Zustand (`eigeneRezepte`, `eigeneZutaten`) und werden beim Start per `eigeneEinbinden()` in `REZEPTE`/`ZUTATEN` eingemischt (Kategorie `eigene`, ohne Preis und Nährwerte)
 
 Lokal testen: `python3 -m http.server 8766 --bind 127.0.0.1` im Projektordner.
 

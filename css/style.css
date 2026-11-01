@@ -407,3 +407,27 @@ details[open] > summary::after { transform: rotate(-90deg); }
 .preiszeile { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 14px; }
 .preiszeile.offer { background: var(--offer-soft); color: var(--text); }
 .preiszeile.offer b { color: var(--offer); }
+
+/* ---------- Eigene Rezepte ---------- */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card-2); border-radius: 14px; margin: 4px 0 12px; }
+.seg button { border: 0; background: none; border-radius: 10px; padding: 9px 6px; font-weight: 650; font-size: 14.5px; color: var(--muted); }
+.seg button span { font-size: 12px; font-weight: 700; opacity: .7; margin-left: 2px; }
+.seg button.on { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.neu-rezept {
+  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; margin-bottom: 12px; padding: 12px 14px;
+  border: 1.5px dashed var(--primary); background: var(--primary-soft); border-radius: 16px; color: var(--text);
+}
+.neu-rezept .plus { width: 40px; height: 40px; border-radius: 12px; background: var(--primary); color: var(--primary-text); display: grid; place-items: center; font-size: 22px; font-weight: 700; flex: none; }
+.neu-rezept b { display: block; }
+.neu-rezept .grow > span { display: block; font-size: 13px; color: var(--muted); }
+.lbl-o { display: block; font-weight: 650; font-size: 14px; margin-bottom: 6px; }
+.input.block { display: block; width: 100%; }
+textarea.input { resize: vertical; font: inherit; line-height: 1.4; }
+.symbole { display: flex; flex-wrap: wrap; gap: 6px; }
+.symbole button { width: 40px; height: 40px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); font-size: 21px; padding: 0; }
+.symbole button.on { border: 2px solid var(--primary); background: var(--primary-soft); }
+.ez-liste li { gap: 8px; }
+.ez-e { font-size: 22px; width: 28px; text-align: center; flex: none; }
+.ez-menge { width: 64px; text-align: right; padding: 6px 8px; }
+.ez-u { width: 38px; font-size: 13px; color: var(--muted); flex: none; }
+.chip.neu { border-style: dashed; }
