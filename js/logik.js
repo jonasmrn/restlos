@@ -87,7 +87,7 @@ window.L = (() => {
     const A = window.ANGEBOTE;
     if (!A || !A.liste) return null;
     const heute = isoDatum(new Date());
-    return A.liste.find((a) => a.zutat === id && a.markt === markt && (!a.bis && !A.bis ? true : (a.bis || A.bis) >= heute)) || null;
+    return A.liste.find((a) => a.zutat === id && a.markt === markt && (a.von || A.von || "") <= heute && (!a.bis && !A.bis ? true : (a.bis || A.bis) >= heute)) || null;
   }
   function richtpreis(id, markt) {
     const M = window.MAERKTE.find((m) => m.id === markt);

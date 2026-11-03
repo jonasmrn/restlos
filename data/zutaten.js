@@ -69,7 +69,7 @@ window.ZUTATEN = {
   gouda:            { n: "Gouda gerieben", cat: "kuehl", u: "g", p: 200, pl: "Beutel 200 g", pr: 1.99, sh: 7, fz: true, nw: [356, 24, 0, 0, 28, 19, 0, 1.8] },
   parmesan:         { n: "Hartkäse (Parmesan/Grana)", cat: "kuehl", u: "g", p: 100, pl: "Stück 100 g", pr: 1.79, sh: 21, nw: [392, 33, 0, 0, 28, 18, 0, 1.6] },
   halloumi:         { n: "Halloumi", cat: "kuehl", u: "g", p: 225, pl: "Packung 225 g", pr: 2.29, sh: 5, nw: [321, 22, 2, 1.3, 25, 17, 0, 2.7] },
-  butter:           { n: "Butter", cat: "kuehl", u: "g", p: 250, pl: "250 g", pr: 2.19, sh: 30, fz: true, nw: [741, 0.7, 0.6, 0.6, 82, 55, 0, 0] },
+  butter:           { n: "Butter", cat: "kuehl", u: "g", p: 250, pl: "250 g", pr: 1.19, sh: 30, fz: true, nw: [741, 0.7, 0.6, 0.6, 82, 55, 0, 0] },
   eier:             { n: "Eier", cat: "kuehl", u: "Stk", p: 6, pl: "6er-Pack", pr: 1.79, sh: 21, nw: [137, 12.6, 0.7, 0.7, 9.5, 2.7, 0, 0.4], g: 55 },
   joghurt:          { n: "Naturjoghurt", cat: "kuehl", u: "g", p: 500, pl: "Becher 500 g", pr: 0.89, sh: 5, nw: [66, 3.8, 4.7, 4.7, 3.6, 2.4, 0, 0.1] },
   quark:            { n: "Magerquark", cat: "kuehl", u: "g", p: 500, pl: "Becher 500 g", pr: 1.29, sh: 5, nw: [67, 12, 4, 4, 0.3, 0.2, 0, 0.1] },
