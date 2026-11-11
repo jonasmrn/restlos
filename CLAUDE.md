@@ -24,7 +24,7 @@ Quellen, die funktioniert haben:
 
 Regeln fürs Eintragen:
 - Nur Artikel, die es in `zutaten.js` oder `sortiment.js` gibt (Sortiment-Artikel wie Kaffee, Klopapier oder Getränke dürfen auch rein, die landen in der freien Einkaufsliste). `preis` wird auf die Standardpackung der Zutat umgerechnet.
-- XXL-Packs und deutlich größere Packungen weglassen, weil sie für 1 Person zu Resten führen. Lose Ware auf die Standardmenge umrechnen.
+- XXL-Packs und deutlich größere Packungen mit `gross: true` eintragen (Preis ebenfalls auf die Standardpackung umgerechnet). Sie erscheinen nur als Hinweis „📦 Großpackung“ im Angebote-Reiter und beim Artikel, nicht im Preisvergleich, damit die Einkaufsliste realistisch bleibt. Lose Ware auf die Standardmenge umrechnen.
 - Nur übernehmen, was wirklich günstiger als der Richtpreis ist. Ist ein Richtpreis offensichtlich veraltet, in `zutaten.js` anpassen.
 - `stand`, `von`, `bis` und `hinweis` (Quellen und Lücken) setzen. Für Angebote, die erst später in der Woche starten, `von` angeben.
 - Danach veröffentlichen (siehe Hosting), damit die Handy-App die neuen Daten bekommt.

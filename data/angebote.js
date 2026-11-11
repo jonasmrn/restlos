@@ -1,7 +1,7 @@
 // Wochenangebote – wird von Claude wöchentlich recherchiert und aktualisiert.
 // preis = Angebotspreis umgerechnet auf die Standardpackung der Zutat (siehe zutaten.js)
 // text  = Originalangebot aus dem Prospekt
-// Nur Angebote mit ähnlicher Packungsgröße werden übernommen (keine XXL-Packs, die für 1 Person zu groß sind).
+// gross: true = deutlich größere Packung (XXL). Wird nur als Hinweis gezeigt, nicht im Preisvergleich eingerechnet.
 
 window.ANGEBOTE = {
   stand: "2026-11-11",
@@ -25,6 +25,10 @@ window.ANGEBOTE = {
     { markt: "aldi", zutat: "nackensteaks", preis: 3.59, text: "Schweine-Nackensteak mariniert 600 g, 3,59 € statt 4,49 €" },
     { markt: "aldi", zutat: "butter", preis: 1.15, text: "Deutsche Markenbutter 250 g, 1,15 € statt 1,19 €" },
     { markt: "aldi", zutat: "fruchtjoghurt", preis: 0.39, text: "Sahnejoghurt Bratapfel 140 g, ab Fr 13.11.", von: "2026-11-13" },
+    // Großpackungen
+    { markt: "aldi", zutat: "apfel", preis: 1.00, gross: true, text: "Äpfel Krumme Dinger 2 kg, 1,99 € statt 2,29 €" },
+    { markt: "aldi", zutat: "kirschtomaten", preis: 0.95, gross: true, text: "Datteltomaten 500 g, 1,89 €" },
+    { markt: "aldi", zutat: "waschmittel", preis: 2.66, gross: true, text: "Waschmittel XXL Color Pulver, 90 Waschladungen, 11,99 €, ab Fr 13.11.", von: "2026-11-13" },
 
     // ---------- Penny (penny.de, Mo 9.11. – Sa 14.11., Preise ohne App) ----------
     { markt: "penny", zutat: "schwein", preis: 3.79, text: "Mühlenhof Schweine-Geschnetzeltes 500 g, 3,79 € (mit App 2,99 €)" },
@@ -39,14 +43,28 @@ window.ANGEBOTE = {
     { markt: "penny", zutat: "zahnpasta", preis: 0.33, text: "Todaydent Zahncreme Kräuter 125 ml, 0,55 €" },
     // ab Donnerstag
     { markt: "penny", zutat: "rosenkohl", preis: 0.74, text: "Rosenkohl 750 g, 1,11 €, ab Do 12.11.", von: "2026-11-12" },
+    // Großpackungen
+    { markt: "penny", zutat: "haehnchenschenkel", preis: 3.25, gross: true, text: "Mühlenhof Frische Hähnchen-Schenkel 2 kg, 6,49 €" },
+    { markt: "penny", zutat: "zitrone", preis: 0.20, gross: true, text: "Zitronen 750-g-Netz (ca. 6 Stk), 1,19 €" },
+    { markt: "penny", zutat: "haehnchen", preis: 3.40, gross: true, text: "Mühlenhof Frische Hähnchen-Innenbrustfilets 1 kg, 8,49 €, ab Do 12.11.", von: "2026-11-12" },
+    { markt: "penny", zutat: "kochschinken", preis: 1.14, gross: true, text: "Mühlenhof XXL Delikatess Hinterschinken 350 g, 1,99 €, ab Do 12.11.", von: "2026-11-12" },
+    { markt: "penny", zutat: "salami", preis: 0.64, gross: true, text: "Mühlenhof XXL Delikatess Salami 250 g, 1,59 €, ab Do 12.11.", von: "2026-11-12" },
+    { markt: "penny", zutat: "spaghetti", preis: 0.60, gross: true, text: "San Fabio XXL Spaghetti 1 kg, 1,19 €, ab Do 12.11.", von: "2026-11-12" },
+    { markt: "penny", zutat: "erdnuesse", preis: 0.70, gross: true, text: "Bravo XXL Erdnüsse 1 kg, 3,49 €, ab Do 12.11.", von: "2026-11-12" },
 
     // ---------- Lidl (marktguru.de, 8.11. – 14.11.) ----------
     { markt: "lidl", zutat: "paprika", preis: 1.44, text: "Rote Paprika lose, 2,99 €/kg (3 Stk ca. 480 g)" },
     { markt: "lidl", zutat: "rosenkohl", preis: 0.74, text: "Rosenkohl 750 g, 1,11 €" },
     { markt: "lidl", zutat: "ingwer", preis: 0.20, text: "Bio-Ingwer lose, 0,39 €/100 g" },
+    // Großpackungen
+    { markt: "lidl", zutat: "hack", preis: 2.91, gross: true, text: "Metzgerfrisch Hackfleisch gemischt 1,2 kg, 6,99 € (mit Lidl Plus 5,99 €)" },
+    { markt: "lidl", zutat: "h_milch", preis: 0.79, gross: true, text: "Milbona Haltbare Vollmilch 12 × 1 l, 9,50 €" },
 
     // ---------- Rewe (marktguru.de, 8.11. – 14.11.) ----------
     { markt: "rewe", zutat: "mandarinen", preis: 1.89, text: "ja! Clementinen 1-kg-Netz" },
     { markt: "rewe", zutat: "fruchtjoghurt", preis: 0.39, text: "Müller Joghurt mit der Ecke 150 g" },
+    // Großpackungen
+    { markt: "rewe", zutat: "kartoffeln", preis: 1.00, gross: true, text: "Speisekartoffeln 5-kg-Sack, 3,33 €" },
+    { markt: "rewe", zutat: "haehnchen", preis: 4.00, gross: true, text: "Astenhof Hähnchen-Brustfilet XXL 1 kg, 9,99 €" },
   ],
 };

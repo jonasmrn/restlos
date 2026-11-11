@@ -908,7 +908,8 @@
         ${preise.map(({ m, p }, i) => `<li><span class="grow"><span class="mdot" style="background:${marktFarbe(m)}"></span><span class="n">${marktName(m)}</span>${i === 0 ? ` <span class="badge green">günstigster</span>` : ""}
           ${p.angebot ? `<div class="tiny" style="color:var(--offer)">🏷️ ${esc(p.angebot.text || "Angebot")}</div>` : ""}</span>
           <span class="m">${p.angebot ? `<b style="color:var(--offer)">${L.euro(p.preis)}</b> <s class="tiny muted">${L.euro(p.normal)}</s>` : L.euro(p.preis)}</span></li>`).join("")}
-      </ul><p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt, Angebote laut Prospekt.</p></div>`}`;
+      </ul><p class="tiny muted" style="margin:8px 0 0">Richtpreise geschätzt, Angebote laut Prospekt.</p>
+      ${L.grossAngebote(id, S).map((a) => `<div class="note small" style="margin-top:8px">📦 <b>${marktName(a.markt)}:</b> ${esc(a.text || "")}<br><span class="tiny muted">Großpackung, umgerechnet ${L.euro(a.preis)} je ${esc(z.pl)}. Nicht im Preisvergleich eingerechnet.</span></div>`).join("")}</div>`}`;
     if (extra > 0) html += `<button class="btn danger block" data-a="artikelWeg" data-id="${id}">Von der Liste nehmen</button>`;
     return html;
   }
@@ -936,9 +937,10 @@
       return html;
     }
     const imPlan = S.plan ? new Set(Object.keys(L.bedarf(S.plan, S).b)) : new Set();
-    html += `<div class="card flat small">${A.hinweis ? esc(A.hinweis) + " " : ""}<span class="muted">Stand ${fmtDatum(A.stand)} · Angebote können regional abweichen.</span></div>`;
+    html += `<div class="card flat small">${A.hinweis ? esc(A.hinweis) + " " : ""}<span class="muted">Stand ${fmtDatum(A.stand)} · Angebote können regional abweichen.</span>
+      ${liste.some((a) => a.gross) ? `<div class="note small" style="margin-top:8px">📦 <b>Großpackung:</b> Preis auf die normale Packung umgerechnet. Lohnt sich, wenn du die Menge verbrauchst oder einfrierst. In Einkaufsliste und Preisvergleich rechnet Restlos weiter mit der normalen Packung.</div>` : ""}</div>`;
     for (const m of window.MAERKTE.filter((m) => ms.includes(m.id))) {
-      const items = liste.filter((a) => a.markt === m.id);
+      const items = liste.filter((a) => a.markt === m.id).sort((a, b) => !!a.gross - !!b.gross);
       if (!items.length) continue;
       html += `<div class="card"><h2><span class="mdot" style="background:${m.farbe}"></span>${m.n}</h2><ul class="list">
         ${items.map((a) => {
@@ -946,8 +948,8 @@
           const normal = L.preis(a.zutat, m.id).normal;
           const n = S.liste[a.zutat] || 0;
           return `<li${anz ? ` data-a="zutatRezepte" data-id="${a.zutat}" style="cursor:pointer"` : ""}><span style="font-size:24px">${Z[a.zutat].e || "🏷️"}</span><span class="grow"><span class="n">${esc(Z[a.zutat].n)}</span>
-            ${imPlan.has(a.zutat) ? ` <span class="badge green">im Plan</span>` : ""}
-            <div class="tiny muted">${esc(a.text || "")}${a.bis ? ` · bis ${fmtDatum(a.bis)}` : ""}</div>
+            ${imPlan.has(a.zutat) ? ` <span class="badge green">im Plan</span>` : ""}${a.gross ? ` <span class="badge accent">📦 Großpackung</span>` : ""}
+            <div class="tiny muted">${esc(a.text || "")}${a.bis ? ` · bis ${fmtDatum(a.bis)}` : ""}${a.gross ? ` · umgerechnet auf ${esc(Z[a.zutat].pl)}` : ""}</div>
             ${anz ? `<div class="tiny" style="color:var(--primary)">${anz} passende${anz === 1 ? "s Rezept" : " Rezepte"} ›</div>` : ""}</span>
             <span class="m"><b style="color:var(--offer)">${L.euro(a.preis)}</b><div class="tiny muted" style="text-decoration:line-through">${L.euro(normal)}</div></span>
             <button class="btn sm ${n ? "primary" : ""}" data-a="plus" data-id="${a.zutat}" aria-label="${esc(Z[a.zutat].n)} auf die Liste">${n ? `${n}× ✓` : "+ Liste"}</button></li>`;

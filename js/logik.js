@@ -83,11 +83,20 @@ window.L = (() => {
   const verderblich = (id) => !Z[id].tk && Z[id].sh <= 7;
 
   // ---------- Preise ----------
+  // Gilt das Angebot heute? (Start- und Enddatum, sonst die der Angebotswoche)
+  function laeuft(a) {
+    const A = window.ANGEBOTE;
+    const heute = isoDatum(new Date());
+    return (a.von || A.von || "") <= heute && (!a.bis && !A.bis ? true : (a.bis || A.bis) >= heute);
+  }
+  // Großpackungen (gross: true) zählen nicht für Preise, Planung und Marktvergleich – sie werden nur als Hinweis gezeigt
   function angebotFuer(id, markt) {
     const A = window.ANGEBOTE;
     if (!A || !A.liste) return null;
-    const heute = isoDatum(new Date());
-    return A.liste.find((a) => a.zutat === id && a.markt === markt && (a.von || A.von || "") <= heute && (!a.bis && !A.bis ? true : (a.bis || A.bis) >= heute)) || null;
+    return A.liste.find((a) => a.zutat === id && a.markt === markt && !a.gross && laeuft(a)) || null;
+  }
+  function grossAngebote(id, st) {
+    return (window.ANGEBOTE?.liste || []).filter((a) => a.gross && a.zutat === id && st.einstellungen.maerkte.includes(a.markt) && laeuft(a));
   }
   function richtpreis(id, markt) {
     const M = window.MAERKTE.find((m) => m.id === markt);
@@ -628,7 +637,7 @@ window.L = (() => {
     isoDatum, ausIso, plusTage, wochentag, datumKurz,
     zahl, menge, euro,
     zutatenFuer, naehrwerte, kernKonflikte, istVorrat, verderblich,
-    preis, bestpreis, angebotFuer, angeboteFuerZutat,
+    preis, bestpreis, angebotFuer, angeboteFuerZutat, grossAngebote,
     rezeptPreis, ernaehrung, istVorbei, standardAuswahl,
     slotsListe, slotOrder, erstelleGeruest, portionenInfo, kochListe, uid,
     bedarf, einkaufsliste, gesamtListe, suche, normal, reste, marktVergleich, planKosten,
