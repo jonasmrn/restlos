@@ -431,3 +431,7 @@ textarea.input { resize: vertical; font: inherit; line-height: 1.4; }
 .ez-menge { width: 64px; text-align: right; padding: 6px 8px; }
 .ez-u { width: 38px; font-size: 13px; color: var(--muted); flex: none; }
 .chip.neu { border-style: dashed; }
+.planbar { display: flex; align-items: center; gap: 10px; background: var(--primary-soft); border-radius: 14px; padding: 10px 12px; margin-bottom: 4px; }
+.planbar b { display: block; font-size: 14.5px; }
+.planbar .tiny { display: block; }
+.sheet .seg { margin: 8px 0 8px; }

@@ -87,7 +87,7 @@
 
   // Rezeptfilter: mahl/extra/kueche = Mehrfachauswahl, zut = { id: 1 (muss rein) | -1 (soll nicht rein) }
   const RF0 = () => ({ mahl: [], ern: null, zeit: null, preis: null, extra: [], kueche: [], meine: null, zut: {}, sort: "empfohlen", abneigung: false });
-  const ui = { tab: "plan", rTab: "sammlung", entwurf: null, ezSuche: "", rf: RF0(), suche: "", zutSuche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null, planer: null };
+  const ui = { tab: "plan", rTab: "sammlung", slotTab: "sammlung", entwurf: null, ezSuche: "", rf: RF0(), suche: "", zutSuche: "", sheet: null, sheetSuche: "", addSuche: "", einkaufAnsicht: "abteilung", portionen: null, planer: null };
   try { ui.tab = sessionStorage.getItem("restlos-tab") || "plan"; } catch (e) { /* egal */ }
 
   // ---------- Hilfen ----------
@@ -1070,12 +1070,12 @@
           <div class="small muted">${r.t} Min.${restSlots.length ? ` · Rest: ${esc(restSlots.join(", "))}` : ""}</div></div></div>
         ${s !== "fruehstueck" ? `<div class="row between" style="margin-top:12px"><span class="small">${info.uebrig > 0 ? `<span class="badge accent">${info.uebrig} Portion übrig → einfrieren</span>` : "Portionen"}</span>
           <span class="stepper"><button data-a="portion" data-id="${m.id}" data-delta="-1" aria-label="weniger">−</button><span>${plural(k.portionen, "Portion", "Portionen")}</span><button data-a="portion" data-id="${m.id}" data-delta="1" aria-label="mehr">+</button></span></div>` : ""}
-        <div class="btns" style="margin-top:12px"><button class="btn primary" data-a="rezept" data-id="${r.id}" data-koch="${m.id}">📖 Rezept & Zutaten</button></div>
+        <div class="btns" style="margin-top:12px"><button class="btn primary" data-a="rezept" data-id="${r.id}" data-koch="${m.id}" data-key="${key}">📖 Rezept & Zutaten</button></div>
       </div>`;
     } else if (m.art === "rest") {
       const k = p.kochen[m.id];
       html += `<div class="card"><div class="row"><span style="font-size:34px">↩️</span><div class="grow"><b>Rest: ${esc(REZ[k.rid]?.n || "")}</b><div class="small muted">gekocht ${slotLabel(k.key)}</div></div>
-        <button class="btn sm" data-a="rezept" data-id="${k.rid}" data-koch="${m.id}">Rezept</button></div></div>`;
+        <button class="btn sm" data-a="rezept" data-id="${k.rid}" data-koch="${m.id}" data-key="${key}">Rezept</button></div></div>`;
     } else if (m.art === "tk") {
       html += `<div class="card"><b>🧊 ${esc(REZ[m.rid]?.n || "")}</b><div class="small muted">Portion aus dem Tiefkühler: am Vorabend in den Kühlschrank legen.</div></div>`;
     } else if (m.art === "frei") {
@@ -1096,7 +1096,11 @@
 
     html += `<h3 style="margin:18px 0 4px">${m.art === "koch" && p.kochen[m.id].rid ? "Anderes Gericht" : "Gericht wählen"}</h3>
       <p class="tiny muted" style="margin:0 0 6px">Sortiert danach, wie gut es zu den Resten der Vortage passt.</p>
-      <input class="search" type="search" placeholder="Suchen …" data-input="sheetSuche" aria-label="Gericht suchen">
+      <div class="seg" role="tablist">
+        <button class="${ui.slotTab === "sammlung" ? "on" : ""}" data-a="slotTab" data-id="sammlung" role="tab">📚 Sammlung</button>
+        <button class="${ui.slotTab === "meine" ? "on" : ""}" data-a="slotTab" data-id="meine" role="tab">👤 Meine Rezepte <span>${(S.eigeneRezepte || []).length}</span></button>
+      </div>
+      <input class="search" type="search" placeholder="Suchen …" value="${esc(ui.sheetSuche)}" data-input="sheetSuche" aria-label="Gericht suchen">
       <div id="suglist">${vorschlagListe()}</div>`;
     return html;
   }
@@ -1113,10 +1117,15 @@
       plan.kochen[kid] = { rid: null, portionen: 1, typ: s, key, weg: [] };
       plan.mahlzeiten[key] = { art: "koch", id: kid };
     }
-    let liste = L.vorschlaege(plan, S, kid, s);
-    const q = ui.sheetSuche.toLowerCase();
-    if (q) liste = liste.filter((x) => x.r.n.toLowerCase().includes(q) || x.r.z.some((z) => Z[z[0]].n.toLowerCase().includes(q)));
-    else liste = liste.filter((x) => !x.gesperrt).slice(0, 14);
+    const meine = ui.slotTab === "meine";
+    let liste = L.vorschlaege(plan, S, kid, s).filter((x) => !!x.r.eigen === meine);
+    const q = L.normal(ui.sheetSuche);
+    if (q) liste = liste.filter((x) => L.normal(x.r.n).includes(q) || x.r.z.some((z) => L.normal(Z[z[0]].n).includes(q)));
+    else liste = liste.filter((x) => !x.gesperrt).slice(0, meine ? 100 : 14);
+    if (meine && !liste.length) {
+      return `<p class="muted small" style="margin:12px 0">${(S.eigeneRezepte || []).length ? `Keines deiner Rezepte passt zu ${L.SLOT_NAME[s]}${q ? " und deiner Suche" : ""}.` : "Du hast noch keine eigenen Rezepte."}</p>
+        <button class="btn sm" data-a="rezeptNeu">＋ Neues Rezept anlegen</button>`;
+    }
     const aktuell = m.art === "koch" ? p.kochen[m.id].rid : null;
     return liste.map((x) => {
       const genutzt = x.genutzt.filter((g) => !Z[g.id].vorrat).sort((a, b) => (L.verderblich(b.id) ? 1 : 0) - (L.verderblich(a.id) ? 1 : 0)).slice(0, 3);
@@ -1140,6 +1149,15 @@
     const tags = [`⏱ ${r.t} Min.`, r.geraet === "ofen" ? "Ofen" : r.geraet === "airfryer" ? "Airfryer" : null, r.fz ? "🧊 einfrierbar" : null].filter(Boolean);
 
     let html = sheetKopf(`${r.e} ${esc(r.n)}`, tags.join(" · "));
+    // Aus dem Plan geöffnet: Tag, Mahlzeit und Tauschen
+    const key = ui.sheet.key;
+    const m = key && S.plan?.mahlzeiten[key];
+    if (m) {
+      const { s } = slotTeile(key);
+      const info = m.art === "rest" ? `↩️ Rest, gekocht ${slotLabel(k.key)}` : s === "fruehstueck" ? "zubereiten" : `kochen · ${plural(k.portionen, "Portion", "Portionen")}`;
+      html += `<div class="planbar"><span class="grow"><b>${L.SLOT_ICON[s]} ${L.SLOT_NAME[s]} · ${L.datumKurz(slotIso(key))}</b><span class="tiny muted">${esc(info)}</span></span>
+        <button class="btn sm" data-a="slotTauschen" data-key="${key}">🔄 Tauschen</button></div>`;
+    }
     if (konflikt.length) html += `<div class="note small">⚠️ Enthält ${esc(konflikt.map((id) => Z[id].n).join(", "))} als Hauptzutat. Wird deshalb nicht automatisch vorgeschlagen.</div>`;
 
     html += `<div class="card"><div class="row between"><h2 style="margin:0">Zutaten</h2>
@@ -1179,7 +1197,7 @@
       <button class="btn sm ${gesperrt ? "primary" : "danger"}" data-a="sperren" data-id="${r.id}">${gesperrt ? "↩️ Wieder vorschlagen" : "🚫 Nie mehr vorschlagen"}</button></div>`;
     html += `<div class="btns" style="margin-bottom:8px">
       <button class="btn ${w ? "primary" : ""}" data-a="wunsch" data-id="${r.id}">${w ? "⭐ Auf der Wunschliste" : "☆ Will ich essen"}</button>
-      ${S.plan ? `<button class="btn" data-a="einplanen" data-id="${r.id}">🗓️ In den Plan</button>` : ""}
+      ${S.plan && !m ? `<button class="btn" data-a="einplanen" data-id="${r.id}">🗓️ In den Plan</button>` : ""}
     </div>
     ${r.eigen ? `<button class="btn block" style="margin-bottom:8px" data-a="rezeptBearbeiten" data-id="${r.id}">✏️ Rezept bearbeiten</button>` : ""}`;
     return html;
@@ -1293,7 +1311,15 @@
     planLoeschen: () => frage("Plan löschen?", "Der aktuelle Wochenplan und die Einkaufsliste werden verworfen.", "Löschen", () => { aufraeumen(); S.plan = null; S.abgehakt = {}; }, true),
     wocheAbschliessen: () => frage("Woche abschließen?", "Haltbare und einfrierbare Reste werden in deinen Vorrat übernommen, übrige Portionen in den Tiefkühler. Danach kannst du die nächste Woche planen.", "Abschließen", wocheAbschliessen),
     bestaetigt: () => { const fn = ui.sheet.fn; ui.sheet = null; aendern(fn); },
-    slot: (ds) => oeffneSheet({ typ: "slot", key: ds.key }),
+    // Gericht im Plan antippen: direkt Rezept & Zutaten, leere/freie Mahlzeiten direkt zur Auswahl
+    slot: (ds) => {
+      const m = S.plan.mahlzeiten[ds.key];
+      const k = (m?.art === "koch" || m?.art === "rest") && S.plan.kochen[m.id];
+      if (k && REZ[k.rid]) { ui.portionen = null; oeffneSheet({ typ: "rezept", rid: k.rid, koch: m.id, key: ds.key }); }
+      else oeffneSheet({ typ: "slot", key: ds.key });
+    },
+    slotTauschen: (ds) => oeffneSheet({ typ: "slot", key: ds.key }),
+    slotTab: (ds) => { ui.slotTab = ds.id; renderSheet(); },
     sheetZu: () => schliesseSheet(),
     setRezept: (ds) => { aendern(() => setzeRezept(ds.key, ds.id), `${REZ[ds.id].n} eingeplant`); schliesseSheet(); },
     setRest: (ds) => { aendern(() => setzeRest(ds.key, ds.id), "Als Rest eingeplant"); schliesseSheet(); },
@@ -1305,7 +1331,7 @@
       k.portionen = Math.min(8, Math.max(Math.max(1, info.gegessen), k.portionen + Number(ds.delta)));
     }),
     portionAnsicht: (ds) => { ui.portionen = Math.min(8, Math.max(1, (ui.portionen || REZ[ui.sheet.rid].s) + Number(ds.delta))); renderSheet(); },
-    rezept: (ds) => { ui.portionen = null; oeffneSheet({ typ: "rezept", rid: ds.id, koch: ds.koch || null }); },
+    rezept: (ds) => { ui.portionen = null; oeffneSheet({ typ: "rezept", rid: ds.id, koch: ds.koch || null, key: ds.key || null }); },
     zutatWeg: (ds) => aendern(() => {
       const k = S.plan.kochen[ds.koch];
       k.weg = k.weg.includes(ds.id) ? k.weg.filter((x) => x !== ds.id) : [...k.weg, ds.id];
